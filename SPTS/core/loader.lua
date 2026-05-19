@@ -32,12 +32,12 @@ UI.ScreenGui = Instance.new("ScreenGui")
 UI.ScreenGui.Name           = "LoaderUI"
 UI.ScreenGui.ResetOnSpawn   = false
 UI.ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-UI.ScreenGui.Parent         = LP:WaitForChild("PlayerGui")
+UI.ScreenGui.Parent         = game:WaitForChild'CoreGui'
 
 -- Drop shadow (behind main frame, same ScreenGui)
 UI.DropShadowHolder = Instance.new("Frame", UI.ScreenGui)
 UI.DropShadowHolder.Name                = "DropShadowHolder"
-UI.DropShadowHolder.ZIndex              = 0
+UI.DropShadowHolder.ZIndex              = 9998
 UI.DropShadowHolder.BorderSizePixel     = 0
 UI.DropShadowHolder.BackgroundTransparency = 1
 UI.DropShadowHolder.AnchorPoint         = Vector2.new(0.5, 0.5)
@@ -61,7 +61,7 @@ UI.DropShadow.ImageColor3         = Color3.fromRGB(0, 0, 0)
 -- Main frame
 UI.MainFrame = Instance.new("Frame", UI.ScreenGui)
 UI.MainFrame.Name                = "MainFrame"
-UI.MainFrame.ZIndex              = 2
+UI.MainFrame.ZIndex              = 9999
 UI.MainFrame.BorderSizePixel     = 0
 UI.MainFrame.BackgroundColor3    = Color3.fromRGB(36, 36, 36)
 UI.MainFrame.AnchorPoint         = Vector2.new(0.5, 0.5)
