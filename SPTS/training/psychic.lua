@@ -1,28 +1,38 @@
 -- Psychic Power training loop.
--- Fly detection: listens to Update_Flying_Status remote event fired by the game.
--- To enter fly: jump, wait for freefall, jump again (double jump activates fly).
--- Once flying: equip Meditate tool for 10x PP gains.
+-- Fly detection: _G.Flying is set by the game's own LocalScript.
+-- To enter fly: double jump (jump → freefall → jump again).
+-- CanFly global is set to true by the game when in Freefall state.
+-- Once flying: equip Meditate for 10x PP gains.
+-- Below 1M PP or quest 9 not done: just equip Meditate on the ground.
 
 local Z              = _G.Z
 local LP             = _G.LP
-local Remote         = _G.Remote
 local UserInputService = _G.UserInputService
 
--- ── Fly state — driven by the game's own remote event ─────────
-
-local isCurrentlyFlying = false
-
--- Hook into the remote event the game fires to track fly state.
--- Update_Flying_Status true = flying, false = not flying.
-Remote.OnClientEvent:Connect(function(args)
-    if type(args) == "table" and args[1] == "Update_Flying_Status" then
-        isCurrentlyFlying = args[2] == true
-        _G.Flying = isCurrentlyFlying
-    end
-end)
-
 _G.isFlying = function()
-    return isCurrentlyFlying
+    -- _G.Flying is set by the game's own LocalScript (not ClientPlrData).
+    -- Also check for fly animations as a fallback.
+    if _G.Flying == true then return true end
+    -- Check if fly animation is playing on the character
+    local char = LP.Character
+    if not char then return false end
+    local animTracks = _G.AnimTracks
+    if animTracks then
+        for _, track in pairs(animTracks) do
+            if track and track.IsPlaying then
+                local name = track.Animation and track.Animation.Name or ""
+                if name:find("Fly") then return true end
+            end
+        end
+    end
+    -- Fallback: check HumanoidRootPart for BodyVelocity/BodyGyro (added during fly)
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if root then
+        if root:FindFirstChildOfClass("BodyVelocity") or root:FindFirstChildOfClass("BodyGyro") then
+            return true
+        end
+    end
+    return false
 end
 
 _G.hasMeditateEquipped = function()
@@ -44,93 +54,66 @@ local function waitUntilMeditateGone(maxSec)
     end
 end
 
--- ── Input helpers ─────────────────────────────────────────────
+-- Unequip Meditate so the game allows fly to be cancelled on next jump.
+_G.stopFlyMode = function()
+    unequipMeditateTool()
+    waitUntilMeditateGone(2)
+end
 
 local function doJump()
     pcall(function() UserInputService:JumpRequest() end)
 end
 
-local function isOnGround(hum)
+local function isFalling()
+    local char = LP.Character
+    local hum  = char and char:FindFirstChildOfClass("Humanoid")
+    if not hum then return false end
+    return hum:GetState() == Enum.HumanoidStateType.Freefall
+end
+
+local function isOnGround()
+    local char = LP.Character
+    local hum  = char and char:FindFirstChildOfClass("Humanoid")
+    if not hum then return false end
     return hum.FloorMaterial ~= Enum.Material.Air
 end
 
-local function isFalling(hum, root)
-    if hum:GetState() == Enum.HumanoidStateType.Freefall then return true end
-    if root and root.AssemblyLinearVelocity.Y < -1 then return true end
-    return false
-end
-
-local function waitUntilFalling(hum, root, maxSec)
-    local t0 = os.clock()
-    while os.clock() - t0 < (maxSec or 1.5) do
-        if isFalling(hum, root) then return true end
-        task.wait(0.05)
-    end
-    return isFalling(hum, root)
-end
-
--- ── Fly entry ─────────────────────────────────────────────────
-
--- Double jump: if on ground, jump first to get airborne, then jump again in freefall.
--- If already in freefall, just jump once more — that activates fly.
+-- Double jump to enter fly mode.
+-- The game sets CanFly=true when in Freefall, then onJumpRequest activates fly.
+-- Returns true if flying after the attempt.
 local function tryEnterFlyMode()
     if _G.isFlying() then return true end
-
-    local chapter = _G.sathScanner.readMainQuestChapterFromUI()
-    if not Z.canFlyMeditateFarm(chapter, _G.RawStats) then return false end
 
     local char = LP.Character
     local hum  = char and char:FindFirstChildOfClass("Humanoid")
     local root = char and char:FindFirstChild("HumanoidRootPart")
     if not hum or not root or hum.Health <= 0 then return false end
 
-    -- If on ground, jump to get airborne first.
-    if isOnGround(hum) then
+    -- Step 1: get airborne if on ground
+    if isOnGround() then
         doJump()
-        waitUntilFalling(hum, root, 1.5)
+        -- Wait for freefall state (CanFly becomes true)
+        local t0 = tick()
+        while tick() - t0 < 1.5 do
+            if isFalling() then break end
+            task.wait(0.05)
+        end
     end
 
-    -- Now in freefall — second jump activates fly.
-    if isFalling(hum, root) then
+    -- Step 2: in freefall, jump again to activate fly
+    if isFalling() then
+        task.wait(0.05) -- tiny wait so CanFly is set
         doJump()
-        task.wait(0.5)
-        if _G.isFlying() then return true end
-    end
-
-    -- Still not flying — teleport to open air and try once more.
-    local fallback = Vector3.new(420, 299, 878)
-    root.CFrame = CFrame.new(fallback)
-    task.wait(0.3)
-    hum  = char:FindFirstChildOfClass("Humanoid")
-    root = char and char:FindFirstChild("HumanoidRootPart")
-    if hum and root then
-        waitUntilFalling(hum, root, 2)
-        if isFalling(hum, root) then
-            doJump()
-            task.wait(0.5)
+        -- Wait for _G.Flying to become true
+        local t0 = tick()
+        while tick() - t0 < 1 do
+            if _G.isFlying() then return true end
+            task.wait(0.05)
         end
     end
 
     return _G.isFlying()
 end
-
--- Stop fly: jump once more while flying to exit, then unequip meditate.
-_G.stopFlyMode = function()
-    if not _G.isFlying() and not _G.hasMeditateEquipped() then return end
-
-    unequipMeditateTool()
-    waitUntilMeditateGone(2)
-
-    if _G.isFlying() then
-        doJump()
-        task.wait(0.4)
-    end
-
-    isCurrentlyFlying = false
-    _G.Flying = false
-end
-
--- ── Meditate equip ────────────────────────────────────────────
 
 local function equipMeditateTool()
     if _G.sathAutofarmBlocked() then return end
@@ -148,8 +131,8 @@ task.spawn(function()
     while true do
         if _G.sathAutofarmBlocked() then
             if not _G.Settings.PsychicPower then
-                _G.stopFlyMode()
                 _G.unequipAllTools()
+                -- Don't stop fly — player controls that via ToggleFlight setting
             end
             task.wait(0.15)
             continue
@@ -178,28 +161,29 @@ task.spawn(function()
             if useFly then
                 _G.ppUseFlyMode = true
                 if _G.isFlying() then
-                    -- Already flying — just keep meditate equipped.
+                    -- Already flying — keep Meditate equipped.
                     equipMeditateTool()
                 else
-                    -- Try to enter fly mode. If it fails, wait before retrying.
+                    -- Try double jump to enter fly.
                     if tryEnterFlyMode() then
-                        task.wait(0.3)
+                        task.wait(0.2)
                         equipMeditateTool()
                     else
+                        -- Fly didn't activate — wait before retrying.
                         task.wait(2)
                     end
                 end
             else
+                -- Ground mode: just equip Meditate in the zone.
                 if _G.ppUseFlyMode then
-                    _G.stopFlyMode()
                     _G.ppUseFlyMode = false
                 end
                 equipMeditateTool()
             end
+
         else
             if _G.ppTeleported or _G.ppUseFlyMode then
                 _G.unequipAllTools()
-                _G.stopFlyMode()
             end
             _G.ppTeleported = false
             _G.ppUseFlyMode = false
