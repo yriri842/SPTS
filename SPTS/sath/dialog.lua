@@ -155,12 +155,19 @@ local function runSathDialog()
     end
 
     print("[SPTS] QuestTalkBtn visible, waiting for tween to settle...")
-    -- Wait until the button has actually tweened into the visible screen area.
-    -- The button starts at Y ~ -0.2 (off-screen top) and tweens down.
-    -- AbsolutePosition.Y should be > 20 once it has landed.
-    local settleDeadline = tick() + 3
+    -- Wait for the tween to finish: position stabilizes when it stops changing.
+    local lastY = -999
+    local stableCount = 0
+    local settleDeadline = tick() + 4
     while tick() < settleDeadline do
-        if talkBtn.AbsolutePosition.Y > 20 then break end
+        local currentY = talkBtn.AbsolutePosition.Y
+        if math.abs(currentY - lastY) < 0.5 then
+            stableCount = stableCount + 1
+            if stableCount >= 3 then break end
+        else
+            stableCount = 0
+        end
+        lastY = currentY
         task.wait(0.05)
     end
     print("[SPTS] Clicking QuestTalkBtn at " .. tostring(talkBtn.AbsolutePosition))
@@ -223,10 +230,13 @@ local function tryAdvanceSathQuest()
     local talkBtn = sg:FindFirstChild("QuestTalkBtn")
     if talkBtn and talkBtn.Visible then
         print("[SPTS] tryAdvanceSathQuest: talk button already visible, waiting for tween...")
-        local d = tick() + 3
+        local lastY, stable = -999, 0
+        local d = tick() + 4
         while tick() < d do
-            if talkBtn.AbsolutePosition.Y > 20 then break end
-            task.wait(0.05)
+            local y = talkBtn.AbsolutePosition.Y
+            if math.abs(y - lastY) < 0.5 then stable = stable + 1; if stable >= 3 then break end
+            else stable = 0 end
+            lastY = y; task.wait(0.05)
         end
         return runTalkFlow()
     end
@@ -245,10 +255,13 @@ local function tryAdvanceSathQuest()
         talkBtn = sg:FindFirstChild("QuestTalkBtn")
         if talkBtn and talkBtn.Visible then
             print("[SPTS] tryAdvanceSathQuest: talk button appeared, waiting for tween...")
-            local d = tick() + 3
+            local lastY, stable = -999, 0
+            local d = tick() + 4
             while tick() < d do
-                if talkBtn.AbsolutePosition.Y > 20 then break end
-                task.wait(0.05)
+                local y = talkBtn.AbsolutePosition.Y
+                if math.abs(y - lastY) < 0.5 then stable = stable + 1; if stable >= 3 then break end
+                else stable = 0 end
+                lastY = y; task.wait(0.05)
             end
             return runTalkFlow()
         end
