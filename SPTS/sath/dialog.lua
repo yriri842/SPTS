@@ -83,7 +83,8 @@ local function clickBtnVIM(btn)
     end)
 end
 
--- Fires a button using firesignal → getconnections → VirtualInputManager.
+-- Fires a button — tries firesignal first, then getconnections, then VIM.
+-- Stops at the first method that works so we don't double-click.
 local function clickBtn(btn)
     if not btn then return end
     local caps = _G.ExploitCaps or {}
@@ -106,7 +107,6 @@ local function clickBtn(btn)
         end
     end
 
-    -- Fallback: physical click via VirtualInputManager
     clickBtnVIM(btn)
 end
 
@@ -187,16 +187,16 @@ local function runSathDialog()
 
     for _ = 1, 80 do
         if not msgFrame.Visible then break end
-        if page and page.Value <= 0 then break end
+        if page and page.Value == 0 then break end
         if btn then clickBtn(btn) end
-        task.wait(0.35)
+        task.wait(0.15)
     end
 
     print("[SPTS] Dialog finished, page.Value = " .. tostring(page and page.Value))
     setTouchingQuestPart(false)
 
     _G.sathDialogBusy = false
-    return page and page.Value <= 0
+    return not msgFrame.Visible or (page and page.Value == 0)
 end
 
 -- Top-level function called by the Sath loop.
