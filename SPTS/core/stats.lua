@@ -121,7 +121,17 @@ task.spawn(function()
             _G.RawStats.PP = pp; _G.Stats.PP = commas(pp)
 
             _G.Stats.Token     = commas(cpd.Token or 0)
-            _G.Stats.AliveTime = tostring(cpd.AliveTime or 0) -- minute
+            local totalSec = (cpd.AliveTime or 0) * 60
+            local days  = math.floor(totalSec / 86400)
+            local hours = math.floor((totalSec % 86400) / 3600)
+            local mins  = math.floor((totalSec % 3600) / 60)
+            local secs  = math.floor(totalSec % 60)
+            local parts = {}
+            if days  > 0 then table.insert(parts, days  .. " day(s)")    end
+            if hours > 0 then table.insert(parts, hours .. " hour(s)")   end
+            if mins  > 0 then table.insert(parts, mins  .. " minute(s)") end
+            if secs  > 0 or #parts == 0 then table.insert(parts, secs .. " second(s)") end
+            _G.Stats.AliveTime = table.concat(parts, " ")
 
             local rankIdx = cpd.Rank or 0
             _G.RawStats.RankIndex = rankIdx
