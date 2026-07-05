@@ -19,6 +19,7 @@ _G.SPTS_Unload = function()
         _G.Settings.AutoSathQuest  = false
         _G.Settings.PlayerEsp      = false
         _G.Settings.AutoPunch      = false
+        _G.Settings.KillAura = false
         _G.Settings.ActiveWeight   = 0
     end
 
