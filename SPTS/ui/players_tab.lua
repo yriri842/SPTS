@@ -81,12 +81,10 @@ Tabs.Players:CreateKeybind({
 -- ── Lock everything except ESP ────────────────────────────────
 -- deferred twice so every element (dropdown/button/toggle/keybind)
 -- has settled its AbsolutePosition/Size before the overlay measures it
-task.spawn(function()
-    task.wait(1.5)
-    killSection:Lock("Kill Players — currently broken")
-    killAuraSection:Lock("Kill Aura — currently broken")
-    punchSection:Lock("Punch — currently broken")
-end)
+
+killSection:Lock("Kill Players — currently broken")
+killAuraSection:Lock("Kill Aura — currently broken")
+punchSection:Lock("Punch — currently broken")
 
 -- ── Player list events ────────────────────────────────────────
 Players.PlayerAdded:Connect(function(plr)
