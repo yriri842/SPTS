@@ -22,6 +22,7 @@ UI.ScreenGui = Instance.new("ScreenGui")
 UI.ScreenGui.Name           = "LoaderUI"
 UI.ScreenGui.ResetOnSpawn   = false
 UI.ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+UI.DisplayOrder             = 101
 UI.ScreenGui.Parent         = game:WaitForChild("CoreGui")
 
 UI.DropShadowHolder = Instance.new("Frame", UI.ScreenGui)
@@ -49,7 +50,7 @@ UI.DropShadow.ImageColor3             = Color3.fromRGB(0, 0, 0)
 
 UI.MainFrame = Instance.new("Frame", UI.ScreenGui)
 UI.MainFrame.Name                = "MainFrame"
-UI.MainFrame.ZIndex              = 10000000
+UI.MainFrame.ZIndex              = 9999
 UI.MainFrame.BorderSizePixel     = 0
 UI.MainFrame.BackgroundColor3    = Color3.fromRGB(36, 36, 36)
 UI.MainFrame.AnchorPoint         = Vector2.new(0.5, 0.5)
