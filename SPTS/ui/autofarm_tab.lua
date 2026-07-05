@@ -171,6 +171,19 @@ Toggles["SQ"] = Tabs.Auto:CreateToggle({
     CurrentValue = false,
     Flag         = "Run_SQ",
     Callback     = function(v)
+        -- all quests already done?? no point running this then
+        if v and _G.sathScanner.hasFinishedAllQuests
+            and _G.sathScanner.hasFinishedAllQuests() then
+            _G.Settings.AutoSathQuest = false
+            if _G.setToggleVisual then _G.setToggleVisual("SQ", false) end
+            _G.Rayfield:Notify({
+                Title    = "Sath",
+                Content  = "All quests already complete. Use manual training toggles.",
+                Duration = 4,
+                Image    = "check-circle",
+            })
+            return
+        end
         _G.Settings.AutoSathQuest = v
         if v then
             _G.pauseConflictingFarms()
