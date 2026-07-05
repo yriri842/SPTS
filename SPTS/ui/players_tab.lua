@@ -50,7 +50,7 @@ local function refreshPlayerDropdown()
 end
 
 Tabs.Players:CreateButton({
-    Name     = "Kill Target(s) With Fireball",
+    Name     = "Kill Target(s) With Fireball <font color='#FF0000'>*Very very risky in a public server</font> 💀",
     Callback = function() task.spawn(_G.killModule.runKillWithFireball) end,
 })
 
