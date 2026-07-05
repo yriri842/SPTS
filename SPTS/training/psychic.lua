@@ -125,9 +125,10 @@ task.spawn(function()
                     local char = LP.Character
                     local root = char and char:FindFirstChild("HumanoidRootPart")
                     if root then
+                        _G.unequipAllTools()
                         root.CFrame = CFrame.new(target)
                         _G.ppTeleported = true
-                        task.wait(0.5)
+                        task.wait(3)
                     end
                 else
                     _G.ppTeleported = true
