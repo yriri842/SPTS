@@ -2639,6 +2639,15 @@ function RayfieldLibrary:CreateWindow(Settings)
                 lockOverlay.Visible = false
                 return
             end
+	            print("[SETTLE]", TabPage.Name,
+                  "tabX:", math.floor(TabPage.AbsolutePosition.X),
+                  "elemX:", math.floor(Elements.AbsolutePosition.X),
+                  "diff:", math.floor(TabPage.AbsolutePosition.X - Elements.AbsolutePosition.X))
+            local settled = math.abs(TabPage.AbsolutePosition.X - Elements.AbsolutePosition.X) <= 1
+            if not settled then
+                lockOverlay.Visible = false
+                return
+            end
 
             local baseY  = Section.AbsolutePosition.Y
             local minRel = 0
@@ -2665,15 +2674,15 @@ function RayfieldLibrary:CreateWindow(Settings)
             local visHeight = math.max(visBottom - visTop, 0)
 
             -- hide when the section has slid horizontally out of the page
-            local sectionCentreX = Section.AbsolutePosition.X + Section.AbsoluteSize.X / 2
-            local insideX = sectionCentreX >= pageLeft - 20 and sectionCentreX <= pageRight + 20
+            --local sectionCentreX = Section.AbsolutePosition.X + Section.AbsoluteSize.X / 2
+            --local insideX = sectionCentreX >= pageLeft - 20 and sectionCentreX <= pageRight + 20
 
             local x = Section.AbsolutePosition.X - rayPos.X
             local y = visTop - rayPos.Y
 
             lockOverlay.Position = UDim2.new(0, x, 0, y)
             lockOverlay.Size     = UDim2.new(0, Section.AbsoluteSize.X, 0, visHeight)
-            lockOverlay.Visible  = visHeight > 2 and insideX
+            lockOverlay.Visible  = visHeight > 2
 
             content.Position = UDim2.new(0, 0, 0, (wantTop - visTop))
             content.Size     = UDim2.new(1, 0, 0, fullHeight)
