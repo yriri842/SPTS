@@ -1,16 +1,9 @@
--- Reads the MainQuestFrame UI and turns it into a structured task list.
--- Also handles enriching that list with data from quest_defs when the UI
--- only shows a subset of the actual targets (which happens sometimes).
-
 local Z = _G.Z
 
--- Shorthand aliases set by quest_defs.lua and gui_utils.lua.
 local function DEFS()        return _G.SATH_QUEST_DEFS  end
 local function FLAG_LABELS() return _G.SATH_FLAG_LABELS end
 local function guiUtils()    return _G.guiUtils          end
 
--- Tries to read the current quest number from ClientPlrData first.
--- That's more reliable than scraping the UI text.
 local function getMainQuestNo()
     if _G.ClientPlrData
         and _G.ClientPlrData.QuestData
@@ -21,7 +14,6 @@ local function getMainQuestNo()
     return nil
 end
 
--- Splits "1,234 / 5,678" style progress text into two numbers.
 local function parseProgTxt(text)
     if not text or text == "" then return 0, 0 end
     local left, right = text:match("^%s*(.-)%s*/%s*(.+)%s*$")
@@ -29,7 +21,6 @@ local function parseProgTxt(text)
     return Z.parseNum(left), Z.parseNum(right)
 end
 
--- Maps a quest label string to the flag/key/isKill triple we use internally.
 local function questTxtToMeta(questTxt)
     local t = string.lower(questTxt or "")
     if t:find("villain") or t:find("hero") or t:find("killed") then
@@ -43,16 +34,13 @@ local function questTxtToMeta(questTxt)
     return nil, nil, false
 end
 
--- Checks whether a scanned task matches a definition entry.
 local function taskMatchesQuestDef(t, dt)
     if t.isKill then return dt.key == "KILLS" end
     return t.key == dt.key and t.target == dt.target
 end
 
--- Figures out which quest number a task list belongs to by comparing signatures.
 local function detectQuestId(tasks)
     if not tasks or #tasks == 0 then return nil end
-
     local sig = {}
     for _, t in ipairs(tasks) do
         if t.key and not t.isKill then
@@ -60,7 +48,6 @@ local function detectQuestId(tasks)
         end
     end
     table.sort(sig, function(a, b) return a.key < b.key end)
-
     for id = 1, 13 do
         local def    = DEFS()[id]
         local defSig = {}
@@ -70,7 +57,6 @@ local function detectQuestId(tasks)
             end
         end
         table.sort(defSig, function(a, b) return a.key < b.key end)
-
         if #sig == #defSig then
             local ok = true
             for i = 1, #sig do
@@ -81,30 +67,23 @@ local function detectQuestId(tasks)
             if ok then return id end
         end
     end
-
-    -- Quest 13 has a kill task alongside PP, so handle that edge case.
     local hasKill, hasPP = false, false
     for _, t in ipairs(tasks) do
         if t.isKill      then hasKill = true end
         if t.key == "PP" then hasPP   = true end
     end
     if hasKill and hasPP then return 13 end
-
     return nil
 end
 
--- Filters and sorts a raw task list to match the definition order.
 local function normalizeQuestTasks(tasks)
     if not tasks or #tasks == 0 then return tasks end
-
     local no       = getMainQuestNo()
     local defToUse = (no and no > 0) and DEFS()[no] or nil
-
     if not defToUse then
         local qid = detectQuestId(tasks)
         defToUse  = qid and DEFS()[qid] or nil
     end
-
     if defToUse then
         local filtered = {}
         for _, t in ipairs(tasks) do
@@ -117,8 +96,6 @@ local function normalizeQuestTasks(tasks)
         table.sort(filtered, function(a, b) return (a.index or 0) < (b.index or 0) end)
         return filtered
     end
-
-    -- No matching def found — just keep valid tasks in UI order.
     local filtered = {}
     for _, t in ipairs(tasks) do
         if t.isKill or (t.flag and t.target > 0) then
@@ -129,13 +106,31 @@ local function normalizeQuestTasks(tasks)
     return filtered
 end
 
--- Reads up to 5 MaxFrame slots from the MainQuestFrame and returns a task list.
 local function scanMainQuestUI()
-    if getMainQuestNo() == 0 then return {} end
+    -- was: if getMainQuestNo() == 0 then return {} end
+    -- problem: right after finishing a quest the game briefly reports No=0
+    -- before it flips to the next one, so we'd bail with empty {} and the
+    -- loop thinks we need a fresh quest = the whole "0/13 talk to sath" thing
+    local no = getMainQuestNo()
+    if no == 0 then
+        -- double check the UI actually has no visible task rows before giving up
+        local mqfCheck = guiUtils().getMainQuestFrame()
+        local anyVisible = false
+        if mqfCheck then
+            for i = 1, 5 do
+                local f = mqfCheck:FindFirstChild("MaxFrame" .. i)
+                if f and f.Visible and f:FindFirstChild("QuestTxt")
+                    and f.QuestTxt.Text ~= "" then
+                    anyVisible = true; break
+                end
+            end
+        end
+        if not anyVisible then return {} end
+        -- UI still shows tasks so No=0 is just a transient, keep scanning
+    end
 
     local mqf = guiUtils().getMainQuestFrame()
     if not mqf then return nil end
-
     local tasks = {}
     for i = 1, 5 do
         local frame = mqf:FindFirstChild("MaxFrame" .. i)
@@ -145,7 +140,6 @@ local function scanMainQuestUI()
             local claimBtn = frame:FindFirstChild("ClaimBtn")
             local qt = questLbl and questLbl.Text or ""
             local pt = progLbl  and progLbl.Text  or ""
-
             if qt ~= "" then
                 local flag, key, isKill = questTxtToMeta(qt)
                 if flag or isKill then
@@ -168,29 +162,21 @@ local function scanMainQuestUI()
             end
         end
     end
-
     return normalizeQuestTasks(tasks)
 end
 
--- The UI sometimes only shows one row even when the quest has multiple targets.
--- This fills in the missing tasks using the definition so the farm loop always
--- has the full picture and respects the correct order.
 local function enrichTasksFromQuestDef(tasks)
     if not tasks then return tasks end
-
     local no  = getMainQuestNo()
     local qid = (no and no > 0) and no or detectQuestId(tasks)
     if not qid or not DEFS()[qid] then return tasks end
-
     local byKey = {}
     for _, t in ipairs(tasks) do
         if t.key then byKey[t.key] = t end
     end
-
     local enriched = {}
     for _, dt in ipairs(DEFS()[qid].tasks) do
         if dt.farm == false or dt.key == "KILLS" then
-            -- Kill tasks are never farmed; just carry them through if present.
             if byKey[dt.key] then table.insert(enriched, byKey[dt.key]) end
         else
             local raw = _G.RawStats[dt.key] or 0
@@ -202,7 +188,6 @@ local function enrichTasksFromQuestDef(tasks)
                 t.complete = t.complete or (t.current >= t.target)
                 table.insert(enriched, t)
             else
-                -- Task wasn't visible in the UI — synthesize it from the def.
                 local raw2 = _G.RawStats[dt.key] or 0
                 table.insert(enriched, {
                     key      = dt.key,
@@ -217,24 +202,29 @@ local function enrichTasksFromQuestDef(tasks)
             end
         end
     end
-
     return enriched
 end
 
--- Returns true when the player has no active quest and needs to visit Sath.
 local function needsQuestPickupFromSath()
+    -- only trust No==0 if the UI genuinely has no tasks showing
+    -- otherwise we get the false "0/13 go to sath" right after a turn-in
     local no = getMainQuestNo()
-    if no == 0 then return true end
     if no ~= nil and no > 0 then return false end
+
     local tasks = scanMainQuestUI()
-    return not tasks or #tasks == 0
+    if tasks and #tasks > 0 then return false end
+
+    -- one more confirm pass, quest data lags a frame or two sometimes
+    task.wait(0.15)
+    local no2 = getMainQuestNo()
+    if no2 ~= nil and no2 > 0 then return false end
+    local tasks2 = scanMainQuestUI()
+    return not tasks2 or #tasks2 == 0
 end
 
--- Reads the current chapter number, trying ClientPlrData first then UI text.
 local function readMainQuestChapterFromUI()
     local no = getMainQuestNo()
     if no ~= nil then return no end
-
     local mqf = guiUtils().getMainQuestFrame()
     if mqf then
         for _, d in ipairs(mqf:GetDescendants()) do
@@ -244,7 +234,6 @@ local function readMainQuestChapterFromUI()
             end
         end
     end
-
     local sg   = guiUtils().getScreenGui()
     local menu = sg and sg:FindFirstChild("MenuFrame")
     if menu then
@@ -255,13 +244,10 @@ local function readMainQuestChapterFromUI()
             end
         end
     end
-
     local tasks = scanMainQuestUI()
     return tasks and detectQuestId(tasks) or nil
 end
 
--- Store in _G so farm.lua, dialog.lua, loop.lua, and training modules
--- can all call these without require().
 _G.sathScanner = {
     getMainQuestNo             = getMainQuestNo,
     detectQuestId              = detectQuestId,
