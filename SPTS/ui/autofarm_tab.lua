@@ -178,7 +178,7 @@ Toggles["SQ"] = Tabs.Auto:CreateToggle({
             if _G.setToggleVisual then _G.setToggleVisual("SQ", false) end
             _G.Rayfield:Notify({
                 Title    = "Sath",
-                Content  = "All quests already complete. Use manual training toggles.",
+                Content  = "All quests already complete.",
                 Duration = 4,
                 Image    = "check-circle",
             })
