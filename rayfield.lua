@@ -2553,8 +2553,9 @@ function RayfieldLibrary:CreateWindow(Settings)
     function SectionValue:Lock(reason)
         if lockOverlay then return end
 
-        -- overlay lives INSIDE the scrolling page so it scrolls with the
-        -- elements. we size/position it in offset relative to TabPage.
+        -- parent OUTSIDE the scrolling page (into Elements) so the page's
+        -- UIListLayout doesn't push it into the flow. we align it in
+        -- screen space via AbsolutePosition every frame instead.
         lockOverlay = Instance.new("Frame")
         lockOverlay.Name = "SectionLock"
         lockOverlay.BackgroundColor3 = SelectedTheme.Background
@@ -2563,7 +2564,8 @@ function RayfieldLibrary:CreateWindow(Settings)
         lockOverlay.ZIndex = 500
         lockOverlay.Active = true
         lockOverlay.Selectable = false
-        lockOverlay.Parent = TabPage
+        lockOverlay.ClipsDescendants = true
+        lockOverlay.Parent = Elements  -- above the scrolling page
 
         local corner = Instance.new("UICorner")
         corner.CornerRadius = UDim.new(0, 6)
@@ -2575,26 +2577,12 @@ function RayfieldLibrary:CreateWindow(Settings)
         stroke.Thickness = 1
         stroke.Parent = lockOverlay
 
-        local shadow = Instance.new("ImageLabel")
-        shadow.Name = "Shadow"
-        shadow.BackgroundTransparency = 1
-        shadow.Image = customAssets[tostring(3602733521)] or "rbxassetid://3602733521"
-        shadow.ImageColor3 = SelectedTheme.Shadow
-        shadow.ImageTransparency = 1
-        shadow.ScaleType = Enum.ScaleType.Slice
-        shadow.SliceCenter = Rect.new(49, 49, 450, 450)
-        shadow.Size = UDim2.new(1, 20, 1, 20)
-        shadow.Position = UDim2.new(0.5, 0, 0.5, 0)
-        shadow.AnchorPoint = Vector2.new(0.5, 0.5)
-        shadow.ZIndex = 499
-        shadow.Parent = lockOverlay
-
         local icon = Instance.new("ImageLabel")
         icon.Name = "LockIcon"
         icon.BackgroundTransparency = 1
-        icon.Size = UDim2.new(0, 20, 0, 20)
+        icon.Size = UDim2.new(0, 18, 0, 18)
         icon.AnchorPoint = Vector2.new(0.5, 0.5)
-        icon.Position = UDim2.new(0.5, -75, 0.5, 0)
+        icon.Position = UDim2.new(0.5, -68, 0.5, 0)
         icon.ImageColor3 = SelectedTheme.TextColor
         icon.ImageTransparency = 1
         icon.ZIndex = 501
@@ -2609,8 +2597,8 @@ function RayfieldLibrary:CreateWindow(Settings)
         local label = Instance.new("TextLabel")
         label.Name = "LockLabel"
         label.BackgroundTransparency = 1
-        label.Size = UDim2.new(1, -60, 1, 0)
-        label.Position = UDim2.new(0.5, 15, 0.5, 0)
+        label.Size = UDim2.new(1, -50, 1, 0)
+        label.Position = UDim2.new(0.5, 12, 0.5, 0)
         label.AnchorPoint = Vector2.new(0.5, 0.5)
         label.Font = Enum.Font.GothamMedium
         label.Text = reason or "Locked"
@@ -2621,40 +2609,47 @@ function RayfieldLibrary:CreateWindow(Settings)
         label.ZIndex = 501
         label.Parent = lockOverlay
 
-        -- position/size the overlay to cover the section title + its elements,
-        -- all in TabPage-local offset coordinates so it rides the scroll
+        -- align to the section using screen-space (offset) coords relative
+        -- to Elements. clamp to the visible page so it never spills over
+        -- the topbar / other tabs when scrolled.
         local function reposition()
             if not lockOverlay or not lockOverlay.Parent then return end
 
-            local topOff    = Section.Position.Y.Offset
-            local bottomOff = Section.Position.Y.Offset + Section.AbsoluteSize.Y
-
-            -- use canvas-relative positions: each element's offset from TabPage top
             local baseY = Section.AbsolutePosition.Y
-            local minY  = 0
-            local maxY  = Section.AbsoluteSize.Y
-
+            local minRel = 0
+            local maxRel = Section.AbsoluteSize.Y
             for _, el in ipairs(getSectionElements()) do
                 local relTop = el.AbsolutePosition.Y - baseY
                 local relBot = relTop + el.AbsoluteSize.Y
-                if relBot > maxY then maxY = relBot end
-                if relTop < minY then minY = relTop end
+                if relBot > maxRel then maxRel = relBot end
+                if relTop < minRel then minRel = relTop end
             end
 
-            -- Section.AbsolutePosition relative to TabPage's canvas
-            local canvasY = Section.AbsolutePosition.Y - TabPage.AbsolutePosition.Y + TabPage.CanvasPosition.Y
-            local canvasX = Section.AbsolutePosition.X - TabPage.AbsolutePosition.X
+            local elementsPos  = Elements.AbsolutePosition
+            local pageTop      = TabPage.AbsolutePosition.Y
+            local pageBottom   = pageTop + TabPage.AbsoluteSize.Y
 
-            lockOverlay.Position = UDim2.new(0, canvasX, 0, canvasY + minY)
-            lockOverlay.Size     = UDim2.new(0, Section.AbsoluteSize.X, 0, maxY - minY)
+            local wantTop    = baseY + minRel
+            local wantBottom = baseY + maxRel
+
+            -- clip to the visible scroll area
+            local clampedTop    = math.max(wantTop, pageTop)
+            local clampedBottom = math.min(wantBottom, pageBottom)
+            local height        = math.max(clampedBottom - clampedTop, 0)
+
+            local x = Section.AbsolutePosition.X - elementsPos.X
+            local y = clampedTop - elementsPos.Y
+
+            lockOverlay.Position = UDim2.new(0, x, 0, y)
+            lockOverlay.Size     = UDim2.new(0, Section.AbsoluteSize.X, 0, height)
+            lockOverlay.Visible  = height > 1
         end
 
         reposition()
         lockConn = RunService.RenderStepped:Connect(reposition)
 
-        TweenService:Create(lockOverlay, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.1}):Play()
-        TweenService:Create(stroke, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {Transparency = 0}):Play()
-        TweenService:Create(shadow, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {ImageTransparency = 0.5}):Play()
+        TweenService:Create(lockOverlay, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.35}):Play()
+        TweenService:Create(stroke, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {Transparency = 0.4}):Play()
         TweenService:Create(icon, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {ImageTransparency = 0}):Play()
         TweenService:Create(label, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {TextTransparency = 0}):Play()
     end
