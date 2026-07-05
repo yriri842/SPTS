@@ -146,8 +146,10 @@ function M.canDeathGrind(bt)
     return (bt or 0) >= M.BT_DEATH_GRIND_MIN
 end
 
-function M.canFlyMeditateFarm(chapter, raw)
-    if not chapter or chapter < M.PP_FLY_CHAPTER then return false end
+function M.canFlyMeditateFarm(chapter, raw, flyUnlocked)
+    if not flyUnlocked then
+        if not chapter or chapter < M.PP_FLY_CHAPTER then return false end
+    end
     raw = raw or {}
     if (raw.JF or 0) < M.PP_FLY_MIN_JF then return false end
     if (raw.PP or 0) < M.PP_FLY_MIN_PP then return false end
