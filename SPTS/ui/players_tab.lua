@@ -81,8 +81,8 @@ Tabs.Players:CreateKeybind({
 -- ── Lock everything except ESP ────────────────────────────────
 -- deferred twice so every element (dropdown/button/toggle/keybind)
 -- has settled its AbsolutePosition/Size before the overlay measures it
-task.defer(function()
-    task.wait(0.1)
+task.spawn(function()
+    task.wait(1.5)
     killSection:Lock("🔒 Under development")
     killAuraSection:Lock("🔒 Under development")
     punchSection:Lock("🔒 Under development")
