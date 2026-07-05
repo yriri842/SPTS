@@ -1,6 +1,3 @@
--- Polls the in-game stat labels every 0.8 s and keeps _G.Stats / _G.RawStats fresh.
--- Other modules read from those globals instead of touching the UI themselves.
-
 local Z = _G.Z
 
 task.spawn(function()
