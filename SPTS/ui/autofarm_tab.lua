@@ -157,8 +157,12 @@ local SathQuestInfo = Tabs.Auto:CreateLabel("—", 2197020684)
 
 -- Refresh the status line every second.
 task.spawn(function()
-    while task.wait(1) do
-        SathQuestInfo:Set(_G.buildSathInfoText())
+    while _G.SPTS_ALIVE ~= false do
+        task.wait(1)
+        if _G.SPTS_ALIVE == false then break end
+        pcall(function()
+            SathQuestInfo:Set(_G.buildSathInfoText())
+        end)
     end
 end)
 
