@@ -15,11 +15,15 @@ local LabelJF = Tabs.Dash:CreateLabel("Jump Force: --",      2197021850)
 local LabelPP = Tabs.Dash:CreateLabel("Psychic Power: --",   2197021455)
 
 task.spawn(function()
-    while task.wait(0.5) do
-        LabelFS:Set("Fist Strength: "  .. _G.Stats.FS)
-        LabelBT:Set("Body Toughness: " .. _G.Stats.BT)
-        LabelMS:Set("Movement Speed: " .. _G.Stats.MS)
-        LabelJF:Set("Jump Force: "     .. _G.Stats.JF)
-        LabelPP:Set("Psychic Power: "  .. _G.Stats.PP)
+    while _G.SPTS_ALIVE ~= false do
+        task.wait(0.5)
+        if _G.SPTS_ALIVE == false then break end
+        pcall(function()
+            LabelFS:Set("Fist Strength: "  .. _G.Stats.FS)
+            LabelBT:Set("Body Toughness: " .. _G.Stats.BT)
+            LabelMS:Set("Movement Speed: " .. _G.Stats.MS)
+            LabelJF:Set("Jump Force: "     .. _G.Stats.JF)
+            LabelPP:Set("Psychic Power: "  .. _G.Stats.PP)
+        end)
     end
 end)
