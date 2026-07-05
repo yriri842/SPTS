@@ -18,7 +18,7 @@ task.spawn(function()
         end
         if _G.sathAllowsToolFarm("FistStrength") then
             local chapter = _G.sathScanner.readMainQuestChapterFromUI()
-            local fsMode  = Z.fsTrainingMode(chapter)
+            local fsMode  = Z.fsTrainingMode(chapter, _G.RawStats.FS)
             if fsMode == "rock" or fsMode == "zone" then
                 _G.equipZoneTool(Z.ZONE_TOOLS.FistStrength)
             end
@@ -35,7 +35,7 @@ task.spawn(function()
         end
         if _G.Settings.FistStrength then
             local chapter = _G.sathScanner.readMainQuestChapterFromUI()
-            local fsMode  = Z.fsTrainingMode(chapter)
+            local fsMode  = Z.fsTrainingMode(chapter, _G.RawStats.FS)
             if fsMode ~= "starter" then
                 local target = Z.farmTarget(
                     { BodyToughness = false, FistStrength = true, PsychicPower = false },
