@@ -2618,6 +2618,13 @@ function RayfieldLibrary:CreateWindow(Settings)
         local function reposition()
             if not lockOverlay or not lockOverlay.Parent then return end
 
+            -- only show when THIS tab page is the active one AND the menu is open
+            local isActivePage = (Elements.UIPageLayout.CurrentPage == TabPage)
+            if not isActivePage or not Rayfield.Enabled or Hidden or Minimised then
+                lockOverlay.Visible = false
+                return
+            end
+
             -- full section span in screen space
             local baseY  = Section.AbsolutePosition.Y
             local minRel = 0
@@ -2630,28 +2637,32 @@ function RayfieldLibrary:CreateWindow(Settings)
             end
 
             local rayPos     = Rayfield.AbsolutePosition
-            local wantTop    = baseY + minRel        -- screen Y of full cover top
-            local wantBottom = baseY + maxRel        -- screen Y of full cover bottom
+            local wantTop    = baseY + minRel
+            local wantBottom = baseY + maxRel
             local fullHeight = wantBottom - wantTop
 
-            -- visible scroll window
+            -- visible scroll window (clamp both vertically AND horizontally)
             local pageTop    = TabPage.AbsolutePosition.Y
             local pageBottom = pageTop + TabPage.AbsoluteSize.Y
+            local pageLeft   = TabPage.AbsolutePosition.X
+            local pageRight  = pageLeft + TabPage.AbsoluteSize.X
 
-            -- clamp the visible cover to the scroll window
             local visTop    = math.max(wantTop, pageTop)
             local visBottom = math.min(wantBottom, pageBottom)
             local visHeight = math.max(visBottom - visTop, 0)
+
+            -- if the section's X is outside the visible page (tab sliding
+            -- in/out), hide it entirely
+            local sectionCentreX = Section.AbsolutePosition.X + Section.AbsoluteSize.X / 2
+            local insideX = sectionCentreX >= pageLeft - 5 and sectionCentreX <= pageRight + 5
 
             local x = Section.AbsolutePosition.X - rayPos.X
             local y = visTop - rayPos.Y
 
             lockOverlay.Position = UDim2.new(0, x, 0, y)
             lockOverlay.Size     = UDim2.new(0, Section.AbsoluteSize.X, 0, visHeight)
-            lockOverlay.Visible  = visHeight > 2 and TabPage.Visible
+            lockOverlay.Visible  = visHeight > 2 and insideX
 
-            -- keep the content centred on the FULL cover, but expressed
-            -- relative to the (clipped) overlay so text stays put
             content.Position = UDim2.new(0, 0, 0, (wantTop - visTop))
             content.Size     = UDim2.new(1, 0, 0, fullHeight)
         end
