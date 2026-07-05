@@ -4,7 +4,7 @@ local Rayfield = _G.Rayfield
 
 Tabs.Util:CreateSection("Respawn")
 Toggles["IR"] = Tabs.Util:CreateToggle({
-    Name         = "Instant Respawn",
+    Name         = "Instant Respawn <font color='#FF0000'>*Risky in a public server</font>",
     CurrentValue = false,
     Flag         = "Run_IR",
     Callback     = function(v) _G.Settings.InstantRespawn = v end,
@@ -12,7 +12,7 @@ Toggles["IR"] = Tabs.Util:CreateToggle({
 
 Tabs.Util:CreateSection("Manual")
 Tabs.Util:CreateButton({
-    Name     = "Respawn Here",
+    Name     = "Respawn Here <font color='#FF0000'>*Risky in a public server</font>",
     Callback = function() _G.doRespawn() end,
 })
 
