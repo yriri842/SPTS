@@ -2617,17 +2617,15 @@ function RayfieldLibrary:CreateWindow(Settings)
 
         local function reposition()
             if not lockOverlay or not lockOverlay.Parent then return end
-
             -- only show when THIS tab page is the active one AND the menu is open
             local isActivePage = (Elements.UIPageLayout.CurrentPage == TabPage)
-            -- also treat a page that's mid-slide (drifted off the main window)
-            -- as inactive so the cover never trails outside the UI
+            -- treat a mid-slide (drifted) page as inactive so the cover never
+            -- trails outside the UI during tab transitions
             local pageDrifted = math.abs(TabPage.AbsolutePosition.X - Elements.AbsolutePosition.X) > 3
             if not isActivePage or pageDrifted or not Rayfield.Enabled or Hidden or Minimised then
                 lockOverlay.Visible = false
                 return
             end
-
             -- full section span in screen space
             local baseY  = Section.AbsolutePosition.Y
             local minRel = 0
@@ -2638,35 +2636,27 @@ function RayfieldLibrary:CreateWindow(Settings)
                 if relBot > maxRel then maxRel = relBot end
                 if relTop < minRel then minRel = relTop end
             end
-
             local rayPos     = Rayfield.AbsolutePosition
             local wantTop    = baseY + minRel
             local wantBottom = baseY + maxRel
             local fullHeight = wantBottom - wantTop
-
-            -- visible scroll window (clamp both vertically AND horizontally)
+            -- visible scroll window
             local pageTop    = TabPage.AbsolutePosition.Y
             local pageBottom = pageTop + TabPage.AbsoluteSize.Y
             local pageLeft   = TabPage.AbsolutePosition.X
             local pageRight  = pageLeft + TabPage.AbsoluteSize.X
-
             local visTop    = math.max(wantTop, pageTop)
             local visBottom = math.min(wantBottom, pageBottom)
             local visHeight = math.max(visBottom - visTop, 0)
-
-            -- if the section's X is outside the visible page (tab sliding
-            -- in/out), hide it entirely
-            local sectionLeft   = Section.AbsolutePosition.X
-            local sectionRight  = sectionLeft + Section.AbsoluteSize.X
+            -- require the section to sit within the horizontal page bounds
+            local sectionLeft  = Section.AbsolutePosition.X
+            local sectionRight = sectionLeft + Section.AbsoluteSize.X
             local insideX = sectionLeft >= pageLeft - 2 and sectionRight <= pageRight + 2
-
             local x = Section.AbsolutePosition.X - rayPos.X
             local y = visTop - rayPos.Y
-
             lockOverlay.Position = UDim2.new(0, x, 0, y)
             lockOverlay.Size     = UDim2.new(0, Section.AbsoluteSize.X, 0, visHeight)
             lockOverlay.Visible  = visHeight > 2 and insideX
-
             content.Position = UDim2.new(0, 0, 0, (wantTop - visTop))
             content.Size     = UDim2.new(1, 0, 0, fullHeight)
         end
