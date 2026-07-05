@@ -128,11 +128,24 @@ task.spawn(function()
                         _G.unequipAllTools()
                         root.CFrame = CFrame.new(target)
                         _G.ppTeleported = true
-                        task.wait(3.5)
+                        local waited = 0
+                        while waited < 3.7 do
+                            if not _G.Settings.PsychicPower then
+                                _G.unequipAllTools()
+                                _G.ppTeleported = false
+                                break
+                            end
+                            task.wait(0.1)
+                            waited = waited + 0.1
+                        end
                     end
                 else
                     _G.ppTeleported = true
                 end
+            end
+            if not _G.Settings.PsychicPower then
+                task.wait(0.4)
+                continue
             end
             if useFly then
                 _G.ppUseFlyMode = true
