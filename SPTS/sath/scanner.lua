@@ -14,6 +14,32 @@ local function getMainQuestNo()
     return nil
 end
 
+local function hasFinishedAllQuests()
+    local sg = guiUtils().getScreenGui()
+    local menu = sg and sg:FindFirstChild("MenuFrame")
+    local skillFrame = menu and menu:FindFirstChild("SkillFrame")
+    if not skillFrame then return false end
+    local txt12 = skillFrame:FindFirstChild("SkillTxt12")
+    local box = txt12 and txt12:FindFirstChild("Skill_12_TxtBox")
+    local nameVal = box and box:FindFirstChild("SkillName")
+    if nameVal and nameVal:IsA("StringValue") then
+        return nameVal.Value == "KillingIntentAura"
+    end
+    return false
+end
+
+local function hasFlyUnlocked()
+    local sg = guiUtils().getScreenGui()
+    local menu = sg and sg:FindFirstChild("MenuFrame")
+    local skillFrame = menu and menu:FindFirstChild("SkillFrame")
+    if not skillFrame then return false end
+    local txt8 = skillFrame:FindFirstChild("SkillTxt8")
+    if txt8 and txt8.Text and string.find(string.lower(txt8.Text), "fly") then
+        return true
+    end
+    return false
+end
+
 local function parseProgTxt(text)
     if not text or text == "" then return 0, 0 end
     local left, right = text:match("^%s*(.-)%s*/%s*(.+)%s*$")
@@ -255,4 +281,6 @@ _G.sathScanner = {
     enrichTasksFromQuestDef    = enrichTasksFromQuestDef,
     needsQuestPickupFromSath   = needsQuestPickupFromSath,
     readMainQuestChapterFromUI = readMainQuestChapterFromUI,
+    hasFinishedAllQuests       = hasFinishedAllQuests,
+    hasFlyUnlocked             = hasFlyUnlocked,
 }
