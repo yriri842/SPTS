@@ -2631,7 +2631,7 @@ function RayfieldLibrary:CreateWindow(Settings)
         label.ZIndex = 503
         label.Parent = row
 
-        local function reposition()
+            local function reposition()
             if not lockOverlay or not lockOverlay.Parent then return end
 
             local isActivePage = (Elements.UIPageLayout.CurrentPage == TabPage)
@@ -2639,11 +2639,10 @@ function RayfieldLibrary:CreateWindow(Settings)
                 lockOverlay.Visible = false
                 return
             end
-	            print("[SETTLE]", TabPage.Name,
-                  "tabX:", math.floor(TabPage.AbsolutePosition.X),
-                  "elemX:", math.floor(Elements.AbsolutePosition.X),
-                  "diff:", math.floor(TabPage.AbsolutePosition.X - Elements.AbsolutePosition.X))
-            local settled = math.abs(TabPage.AbsolutePosition.X - Elements.AbsolutePosition.X) <= 1
+
+            -- settled diff is ~12px on this UI; slide animations push it far
+            -- higher, so a threshold above the resting value hides transitions
+            local settled = math.abs(TabPage.AbsolutePosition.X - Elements.AbsolutePosition.X) <= 20
             if not settled then
                 lockOverlay.Visible = false
                 return
@@ -2666,16 +2665,10 @@ function RayfieldLibrary:CreateWindow(Settings)
 
             local pageTop    = TabPage.AbsolutePosition.Y
             local pageBottom = pageTop + TabPage.AbsoluteSize.Y
-            local pageLeft   = TabPage.AbsolutePosition.X
-            local pageRight  = pageLeft + TabPage.AbsoluteSize.X
 
             local visTop    = math.max(wantTop, pageTop)
             local visBottom = math.min(wantBottom, pageBottom)
             local visHeight = math.max(visBottom - visTop, 0)
-
-            -- hide when the section has slid horizontally out of the page
-            --local sectionCentreX = Section.AbsolutePosition.X + Section.AbsoluteSize.X / 2
-            --local insideX = sectionCentreX >= pageLeft - 20 and sectionCentreX <= pageRight + 20
 
             local x = Section.AbsolutePosition.X - rayPos.X
             local y = visTop - rayPos.Y
