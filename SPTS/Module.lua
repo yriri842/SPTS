@@ -139,7 +139,7 @@ function M.btTrainingMode(bt)
     if bt < M.BT_ZONE_MIN then
         return "pushup"
     end
-    return "deathgrind"
+    return "zone"
 end
 
 function M.canDeathGrind(bt)
