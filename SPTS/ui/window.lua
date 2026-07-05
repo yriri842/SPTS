@@ -25,6 +25,7 @@ local Tabs = {
     Equip   = Window:CreateTab("Equipment", "dumbbell"),
     Util    = Window:CreateTab("Utilities", "wrench"),
     Players = Window:CreateTab("Players",   "users"),
+    Webhook = Window:CreateTab("Webhook",   "webhook"),
     Theme   = Window:CreateTab("Themes",    "palette"),
 }
 
