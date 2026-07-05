@@ -2539,9 +2539,7 @@ function RayfieldLibrary:CreateWindow(Settings)
             if child == Section then
                 passedSelf = true
             elseif passedSelf then
-                if child.Name == "SectionTitle" then
-                    break
-                end
+                if child.Name == "SectionTitle" then break end
                 if child:IsA("GuiObject") and child.Name ~= "Placeholder" then
                     table.insert(collected, child)
                 end
@@ -2553,6 +2551,10 @@ function RayfieldLibrary:CreateWindow(Settings)
     function SectionValue:Lock(reason)
         if lockOverlay then return end
 
+        -- parented INSIDE the scrolling page so TabPage's ClipsDescendants
+        -- clips it automatically during tab slides (no manual X juggling).
+        -- height is 0 in the UIListLayout so it never pushes other elements;
+        -- we drive its real position/size manually every frame.
         lockOverlay = Instance.new("Frame")
         lockOverlay.Name = "SectionLock"
         lockOverlay.BackgroundColor3 = SelectedTheme.Background
@@ -2562,7 +2564,9 @@ function RayfieldLibrary:CreateWindow(Settings)
         lockOverlay.Active = true
         lockOverlay.Selectable = false
         lockOverlay.ClipsDescendants = true
-        lockOverlay.Parent = Rayfield  -- top-level ScreenGui, immune to layouts
+        lockOverlay.LayoutOrder = -1000
+        lockOverlay.Size = UDim2.new(1, 0, 0, 0)  -- 0 height => no layout push
+        lockOverlay.Parent = TabPage
 
         local corner = Instance.new("UICorner")
         corner.CornerRadius = UDim.new(0, 6)
@@ -2574,21 +2578,30 @@ function RayfieldLibrary:CreateWindow(Settings)
         stroke.Thickness = 1
         stroke.Parent = lockOverlay
 
-        -- inner content holder, positioned in screen space so it stays put
-        -- while the outer frame is clipped/resized against the scroll area
-        local content = Instance.new("Frame")
-        content.Name = "Content"
-        content.BackgroundTransparency = 1
-        content.BorderSizePixel = 0
-        content.ZIndex = 501
-        content.Parent = lockOverlay
+        -- a centred row that holds the icon + label side by side
+        local row = Instance.new("Frame")
+        row.Name = "Row"
+        row.BackgroundTransparency = 1
+        row.AnchorPoint = Vector2.new(0.5, 0.5)
+        row.Position = UDim2.new(0.5, 0, 0.5, 0)
+        row.Size = UDim2.new(0, 220, 0, 20)
+        row.AutomaticSize = Enum.AutomaticSize.X
+        row.ZIndex = 501
+        row.Parent = lockOverlay
+
+        local rowList = Instance.new("UIListLayout")
+        rowList.FillDirection = Enum.FillDirection.Horizontal
+        rowList.VerticalAlignment = Enum.VerticalAlignment.Center
+        rowList.HorizontalAlignment = Enum.HorizontalAlignment.Center
+        rowList.Padding = UDim.new(0, 6)
+        rowList.SortOrder = Enum.SortOrder.LayoutOrder
+        rowList.Parent = row
 
         local icon = Instance.new("ImageLabel")
         icon.Name = "LockIcon"
+        icon.LayoutOrder = 1
         icon.BackgroundTransparency = 1
         icon.Size = UDim2.new(0, 18, 0, 18)
-        icon.AnchorPoint = Vector2.new(0.5, 0.5)
-        icon.Position = UDim2.new(0.5, -68, 0.5, 0)
         icon.ImageColor3 = SelectedTheme.TextColor
         icon.ImageTransparency = 1
         icon.ZIndex = 502
@@ -2598,32 +2611,27 @@ function RayfieldLibrary:CreateWindow(Settings)
             if rectOffset then icon.ImageRectOffset = rectOffset end
             if rectSize then icon.ImageRectSize = rectSize end
         end
-        icon.Parent = content
+        icon.Parent = row
 
         local label = Instance.new("TextLabel")
         label.Name = "LockLabel"
+        label.LayoutOrder = 2
         label.BackgroundTransparency = 1
-        label.Size = UDim2.new(1, -50, 1, 0)
-        label.Position = UDim2.new(0.5, 12, 0.5, 0)
-        label.AnchorPoint = Vector2.new(0.5, 0.5)
+        label.AutomaticSize = Enum.AutomaticSize.X
+        label.Size = UDim2.new(0, 0, 1, 0)
         label.Font = Enum.Font.GothamMedium
         label.Text = reason or "Locked"
         label.TextColor3 = SelectedTheme.TextColor
         label.TextTransparency = 1
         label.TextSize = 14
-        label.TextXAlignment = Enum.TextXAlignment.Center
+        label.TextXAlignment = Enum.TextXAlignment.Left
         label.ZIndex = 502
-        label.Parent = content
+        label.Parent = row
 
         local function reposition()
             if not lockOverlay or not lockOverlay.Parent then return end
-            -- only show when THIS tab page is the active one AND the menu is open
-            local isActivePage = (Elements.UIPageLayout.CurrentPage == TabPage)
-            if not isActivePage or not Rayfield.Enabled or Hidden or Minimised then
-                lockOverlay.Visible = false
-                return
-            end
-            -- full section span in screen space
+
+            -- span of the section (title + its elements) inside the canvas
             local baseY  = Section.AbsolutePosition.Y
             local minRel = 0
             local maxRel = Section.AbsoluteSize.Y
@@ -2633,29 +2641,14 @@ function RayfieldLibrary:CreateWindow(Settings)
                 if relBot > maxRel then maxRel = relBot end
                 if relTop < minRel then minRel = relTop end
             end
-            local rayPos     = Rayfield.AbsolutePosition
-            local wantTop    = baseY + minRel
-            local wantBottom = baseY + maxRel
-            local fullHeight = wantBottom - wantTop
-            -- visible scroll window
-            local pageTop    = TabPage.AbsolutePosition.Y
-            local pageBottom = pageTop + TabPage.AbsoluteSize.Y
-            local pageLeft   = TabPage.AbsolutePosition.X
-            local pageRight  = pageLeft + TabPage.AbsoluteSize.X
-            local visTop    = math.max(wantTop, pageTop)
-            local visBottom = math.min(wantBottom, pageBottom)
-            local visHeight = math.max(visBottom - visTop, 0)
-            -- hide if the section slid horizontally out of the visible page
-            -- (tab transition). tolerance kept loose so the active page shows.
-            local sectionCentreX = Section.AbsolutePosition.X + Section.AbsoluteSize.X / 2
-            local insideX = sectionCentreX >= pageLeft - 20 and sectionCentreX <= pageRight + 20
-            local x = Section.AbsolutePosition.X - rayPos.X
-            local y = visTop - rayPos.Y
-            lockOverlay.Position = UDim2.new(0, x, 0, y)
-            lockOverlay.Size     = UDim2.new(0, Section.AbsoluteSize.X, 0, visHeight)
-            lockOverlay.Visible  = visHeight > 2 and insideX
-            content.Position = UDim2.new(0, 0, 0, (wantTop - visTop))
-            content.Size     = UDim2.new(1, 0, 0, fullHeight)
+
+            -- convert section screen pos to TabPage canvas coords
+            local canvasX = Section.AbsolutePosition.X - TabPage.AbsolutePosition.X
+            local canvasY = (Section.AbsolutePosition.Y - TabPage.AbsolutePosition.Y)
+                            + TabPage.CanvasPosition.Y + minRel
+
+            lockOverlay.Position = UDim2.new(0, canvasX, 0, canvasY)
+            lockOverlay.Size     = UDim2.new(0, Section.AbsoluteSize.X, 0, (maxRel - minRel))
         end
 
         reposition()
