@@ -57,14 +57,43 @@ local function buildPayload()
     return ok and encoded or nil
 end
 
+local httpRequest = (syn and syn.request)
+    or (http and http.request)
+    or (http_request)
+    or (request)
+    or nil
+
 local function sendWebhook()
     local url = _G.SPTS_WebhookURL
-    if not url or url == "" then return end
+    if not url or url == "" then
+        warn("[SPTS Webhook] URL is empty, skipping send.")
+        return
+    end
     local body = buildPayload()
-    if not body then return end
-    pcall(function()
-        game:GetService("HttpService"):PostAsync(url, body, Enum.HttpContentType.ApplicationJson, false)
-    end)
+    if not body then
+        warn("[SPTS Webhook] Failed to build payload.")
+        return
+    end
+    if httpRequest then
+        local ok, err = pcall(function()
+            httpRequest({
+                Url     = url,
+                Method  = "POST",
+                Headers = { ["Content-Type"] = "application/json" },
+                Body    = body,
+            })
+        end)
+        if not ok then
+            warn("[SPTS Webhook] request() failed: " .. tostring(err))
+        end
+    else
+        local ok, err = pcall(function()
+            game:GetService("HttpService"):PostAsync(url, body, Enum.HttpContentType.ApplicationJson, false)
+        end)
+        if not ok then
+            warn("[SPTS Webhook] PostAsync failed: " .. tostring(err))
+        end
+    end
 end
 
 task.spawn(function()
@@ -101,9 +130,9 @@ Tabs.Webhook:CreateInput({
     CurrentValue             = "",
     PlaceholderText          = "https://discord.com/api/webhooks/...",
     RemoveTextAfterFocusLost = false,
-    Flag                     = "WebhookURL",
     Callback = function(val)
         _G.SPTS_WebhookURL = val
+        warn("[SPTS Webhook] URL set to: " .. tostring(val))
     end,
 })
 
