@@ -89,9 +89,11 @@ for _, def in ipairs(matrixDefs) do
                 return
             end
             _G.Settings[keyMap[id]] = v
-            if id == "PP" and not v then
+            if id == "PP" then
                 _G.ppTeleported = false
-                _G.unequipAllTools()
+                if not v then
+                    _G.unequipAllTools()
+                end
             end
             cascade(id)
         end,
