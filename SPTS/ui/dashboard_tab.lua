@@ -51,7 +51,7 @@ task.spawn(function()
             LabelJF:Set("Jump Force: "     .. (_G.Stats.JF or "--"))
             LabelPP:Set("Psychic Power: "  .. (_G.Stats.PP or "--"))
             LabelToken:Set("Tokens: "      .. (_G.Stats.Token or "--"))
-            LabelAlive:Set("Alive Time: "  .. (_G.Stats.AliveTime or "--") .. "m")
+            LabelAlive:Set("Alive Time: "  .. (_G.Stats.AliveTime or "--"))
 
             if LabelRank then
                 LabelRank:Set("Rank: " .. (_G.Stats.Rank or "--"))
