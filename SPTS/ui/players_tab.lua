@@ -1,14 +1,11 @@
--- Players tab: ESP toggle, kill target dropdown, fireball kill, and punch keybind.
-
+-- Players tab: ESP toggle, kill target dropdown, fireball kill, kill aura, and punch keybind.
 local Tabs    = _G.Tabs
 local Toggles = _G.Toggles
 local Players = _G.Players
 local LP      = _G.LP
 
 -- ── ESP ───────────────────────────────────────────────────────
-
 Tabs.Players:CreateSection("ESP")
-
 Toggles["ESP"] = Tabs.Players:CreateToggle({
     Name         = "Player ESP",
     CurrentValue = false,
@@ -19,9 +16,7 @@ Toggles["ESP"] = Tabs.Players:CreateToggle({
 })
 
 -- ── Kill ──────────────────────────────────────────────────────
-
 Tabs.Players:CreateSection("Kill Players")
-
 local PlayerDropdown = Tabs.Players:CreateDropdown({
     Name            = "Targets",
     Options         = _G.killModule.buildPlayerDropdownOptions(),
@@ -54,17 +49,23 @@ Tabs.Players:CreateButton({
     Callback = function() task.spawn(_G.killModule.runKillWithFireball) end,
 })
 
+-- ── Kill Aura ─────────────────────────────────────────────────
+Tabs.Players:CreateSection("Kill Aura (Punch)")
+Toggles["KillAura"] = Tabs.Players:CreateToggle({
+    Name         = "Kill Aura <font color='#FF0000'>*Also risky in a public server</font> 💀",
+    CurrentValue = false,
+    Flag         = "Run_KillAura",
+    Callback     = function(v) _G.Settings.KillAura = v end,
+})
+
 -- ── Punch ─────────────────────────────────────────────────────
-
 Tabs.Players:CreateSection("Normal Punch (C)")
-
 Toggles["Punch"] = Tabs.Players:CreateToggle({
     Name         = "Enable Punch On Keybind",
     CurrentValue = false,
     Flag         = "Run_Punch",
     Callback     = function(v) _G.Settings.AutoPunch = v end,
 })
-
 Tabs.Players:CreateKeybind({
     Name           = "Punch Keybind",
     CurrentKeybind = "X",
@@ -77,13 +78,11 @@ Tabs.Players:CreateKeybind({
 })
 
 -- ── Player list events ────────────────────────────────────────
-
 Players.PlayerAdded:Connect(function(plr)
     if plr == LP then return end
     task.defer(refreshPlayerDropdown)
     task.defer(function() _G.espModule.attachPlayerEsp(plr) end)
 end)
-
 Players.PlayerRemoving:Connect(function(plr)
     _G.espModule.removePlayerEsp(plr)
     task.defer(refreshPlayerDropdown)
