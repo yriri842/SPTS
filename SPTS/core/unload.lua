@@ -6,7 +6,8 @@ _G.SPTS_Unload = function()
     _G.SPTS_UNLOADING = true
 
     -- 1. flip the flag first, this makes every loop exit on its next wait
-    _G.SPTS_ALIVE = false
+    _G.SPTS_ALIVE           = false
+    _G.SPTS_WebhookEnabled  = false
 
     if _G.Settings then
         _G.Settings.FistStrength   = false
