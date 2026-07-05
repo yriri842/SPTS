@@ -51,7 +51,7 @@ _G.Loader.status("Loading modules...")
 _G.Z = load("Module.lua");     step("Module.lua")
 
 getgenv().RAYFIELD_ASSET_ID = 10804731440
-_G.Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
+_G.Rayfield = loadstring(game:HttpGet("https://raw.githubusercontent.com/yriri842/SPTS/refs/heads/main/rayfield.lua"))()
 step("Rayfield UI")
 
 load("core/state.lua");        step("State")
