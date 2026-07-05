@@ -1,4 +1,5 @@
 -- Players tab: ESP toggle, kill target dropdown, fireball kill, kill aura, and punch keybind.
+-- Everything except ESP is locked (under development) via the section :Lock() API.
 local Tabs    = _G.Tabs
 local Toggles = _G.Toggles
 local Players = _G.Players
@@ -15,8 +16,8 @@ Toggles["ESP"] = Tabs.Players:CreateToggle({
     end,
 })
 
--- ── Kill ──────────────────────────────────────────────────────
-Tabs.Players:CreateSection("Kill Players")
+-- ── Kill (LOCKED) ─────────────────────────────────────────────
+local killSection = Tabs.Players:CreateSection("Kill Players")
 local PlayerDropdown = Tabs.Players:CreateDropdown({
     Name            = "Targets",
     Options         = _G.killModule.buildPlayerDropdownOptions(),
@@ -49,8 +50,8 @@ Tabs.Players:CreateButton({
     Callback = function() task.spawn(_G.killModule.runKillWithFireball) end,
 })
 
--- ── Kill Aura ─────────────────────────────────────────────────
-Tabs.Players:CreateSection("Kill Aura (Punch)")
+-- ── Kill Aura (LOCKED) ────────────────────────────────────────
+local killAuraSection = Tabs.Players:CreateSection("Kill Aura (Punch)")
 Toggles["KillAura"] = Tabs.Players:CreateToggle({
     Name         = "Kill Aura <font color='#FF0000'>*Also risky in a public server</font> 💀",
     CurrentValue = false,
@@ -58,8 +59,8 @@ Toggles["KillAura"] = Tabs.Players:CreateToggle({
     Callback     = function(v) _G.Settings.KillAura = v end,
 })
 
--- ── Punch ─────────────────────────────────────────────────────
-Tabs.Players:CreateSection("Normal Punch (C)")
+-- ── Punch (LOCKED) ────────────────────────────────────────────
+local punchSection = Tabs.Players:CreateSection("Normal Punch (C)")
 Toggles["Punch"] = Tabs.Players:CreateToggle({
     Name         = "Enable Punch On Keybind",
     CurrentValue = false,
@@ -76,6 +77,16 @@ Tabs.Players:CreateKeybind({
         task.spawn(_G.killModule.runKeybindPunch)
     end,
 })
+
+-- ── Lock everything except ESP ────────────────────────────────
+-- deferred twice so every element (dropdown/button/toggle/keybind)
+-- has settled its AbsolutePosition/Size before the overlay measures it
+task.defer(function()
+    task.wait(0.1)
+    killSection:Lock("🔒 Under development")
+    killAuraSection:Lock("🔒 Under development")
+    punchSection:Lock("🔒 Under development")
+end)
 
 -- ── Player list events ────────────────────────────────────────
 Players.PlayerAdded:Connect(function(plr)
