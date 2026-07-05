@@ -83,9 +83,9 @@ Tabs.Players:CreateKeybind({
 -- has settled its AbsolutePosition/Size before the overlay measures it
 task.spawn(function()
     task.wait(1.5)
-    killSection:Lock("🔒 Under development")
-    killAuraSection:Lock("🔒 Under development")
-    punchSection:Lock("🔒 Under development")
+    killSection:Lock("Under development")
+    killAuraSection:Lock("Under development")
+    punchSection:Lock("Under development")
 end)
 
 -- ── Player list events ────────────────────────────────────────
