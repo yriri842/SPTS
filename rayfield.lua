@@ -2550,108 +2550,45 @@ function RayfieldLibrary:CreateWindow(Settings)
         return collected
     end
 
-    function SectionValue:Lock(reason)
+        function SectionValue:Lock(reason)
         if lockOverlay then return end
 
-        -- parent OUTSIDE the scrolling page (into Elements) so the page's
-        -- UIListLayout doesn't push it into the flow. we align it in
-        -- screen space via AbsolutePosition every frame instead.
         lockOverlay = Instance.new("Frame")
-        lockOverlay.Name = "SectionLock"
-        lockOverlay.BackgroundColor3 = SelectedTheme.Background
-        lockOverlay.BackgroundTransparency = 1
+        lockOverlay.Name = "SectionLock_DEBUG"
+        lockOverlay.BackgroundColor3 = Color3.fromRGB(255, 0, 0)  -- KIRMIZI
+        lockOverlay.BackgroundTransparency = 0.3
         lockOverlay.BorderSizePixel = 0
-        lockOverlay.ZIndex = 500
+        lockOverlay.ZIndex = 9999
         lockOverlay.Active = true
-        lockOverlay.Selectable = false
-        lockOverlay.ClipsDescendants = true
-        lockOverlay.Parent = Elements  -- above the scrolling page
-
-        local corner = Instance.new("UICorner")
-        corner.CornerRadius = UDim.new(0, 6)
-        corner.Parent = lockOverlay
-
-        local stroke = Instance.new("UIStroke")
-        stroke.Color = SelectedTheme.ElementStroke
-        stroke.Transparency = 1
-        stroke.Thickness = 1
-        stroke.Parent = lockOverlay
-
-        local icon = Instance.new("ImageLabel")
-        icon.Name = "LockIcon"
-        icon.BackgroundTransparency = 1
-        icon.Size = UDim2.new(0, 18, 0, 18)
-        icon.AnchorPoint = Vector2.new(0.5, 0.5)
-        icon.Position = UDim2.new(0.5, -68, 0.5, 0)
-        icon.ImageColor3 = SelectedTheme.TextColor
-        icon.ImageTransparency = 1
-        icon.ZIndex = 501
-        do
-            local img, rectOffset, rectSize = resolveIcon("lock")
-            icon.Image = img
-            if rectOffset then icon.ImageRectOffset = rectOffset end
-            if rectSize then icon.ImageRectSize = rectSize end
-        end
-        icon.Parent = lockOverlay
+        lockOverlay.Parent = Rayfield  -- en üst seviye, ScreenGui'nin altı
 
         local label = Instance.new("TextLabel")
-        label.Name = "LockLabel"
         label.BackgroundTransparency = 1
-        label.Size = UDim2.new(1, -50, 1, 0)
-        label.Position = UDim2.new(0.5, 12, 0.5, 0)
-        label.AnchorPoint = Vector2.new(0.5, 0.5)
-        label.Font = Enum.Font.GothamMedium
-        label.Text = reason or "Locked"
-        label.TextColor3 = SelectedTheme.TextColor
-        label.TextTransparency = 1
-        label.TextSize = 14
-        label.TextXAlignment = Enum.TextXAlignment.Center
-        label.ZIndex = 501
+        label.Size = UDim2.new(1, 0, 1, 0)
+        label.Font = Enum.Font.GothamBold
+        label.Text = reason or "LOCKED"
+        label.TextColor3 = Color3.new(1,1,1)
+        label.TextSize = 16
+        label.ZIndex = 10000
         label.Parent = lockOverlay
 
-        -- align to the section using screen-space (offset) coords relative
-        -- to Elements. clamp to the visible page so it never spills over
-        -- the topbar / other tabs when scrolled.
         local function reposition()
             if not lockOverlay or not lockOverlay.Parent then return end
-
             local baseY = Section.AbsolutePosition.Y
-            local minRel = 0
             local maxRel = Section.AbsoluteSize.Y
             for _, el in ipairs(getSectionElements()) do
-                local relTop = el.AbsolutePosition.Y - baseY
-                local relBot = relTop + el.AbsoluteSize.Y
+                local relBot = (el.AbsolutePosition.Y - baseY) + el.AbsoluteSize.Y
                 if relBot > maxRel then maxRel = relBot end
-                if relTop < minRel then minRel = relTop end
             end
-
-            local elementsPos  = Elements.AbsolutePosition
-            local pageTop      = TabPage.AbsolutePosition.Y
-            local pageBottom   = pageTop + TabPage.AbsoluteSize.Y
-
-            local wantTop    = baseY + minRel
-            local wantBottom = baseY + maxRel
-
-            -- clip to the visible scroll area
-            local clampedTop    = math.max(wantTop, pageTop)
-            local clampedBottom = math.min(wantBottom, pageBottom)
-            local height        = math.max(clampedBottom - clampedTop, 0)
-
-            local x = Section.AbsolutePosition.X - elementsPos.X
-            local y = clampedTop - elementsPos.Y
-
-            lockOverlay.Position = UDim2.new(0, x, 0, y)
-            lockOverlay.Size     = UDim2.new(0, Section.AbsoluteSize.X, 0, height)
-            lockOverlay.Visible  = height > 1
+            -- Rayfield ScreenGui absolute coords
+            local rayPos = Rayfield.AbsolutePosition
+            lockOverlay.Position = UDim2.new(0, Section.AbsolutePosition.X - rayPos.X, 0, Section.AbsolutePosition.Y - rayPos.Y)
+            lockOverlay.Size = UDim2.new(0, Section.AbsoluteSize.X, 0, maxRel)
+            print("[LOCK DEBUG]", reason, "pos:", lockOverlay.AbsolutePosition, "size:", lockOverlay.AbsoluteSize, "sectionAbs:", Section.AbsolutePosition)
         end
 
         reposition()
         lockConn = RunService.RenderStepped:Connect(reposition)
-
-        TweenService:Create(lockOverlay, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.35}):Play()
-        TweenService:Create(stroke, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {Transparency = 0.4}):Play()
-        TweenService:Create(icon, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {ImageTransparency = 0}):Play()
-        TweenService:Create(label, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {TextTransparency = 0}):Play()
     end
 
     function SectionValue:Unlock()
