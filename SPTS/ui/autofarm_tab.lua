@@ -114,7 +114,7 @@ Toggles["AA"] = Tabs.Auto:CreateToggle({
 
 Tabs.Auto:CreateSection("Death Grinding")
 Toggles["DG"] = Tabs.Auto:CreateToggle({
-    Name         = "Death Grinding (BT)",
+    Name         = "Death Grinding (BT) <font color='#FF0000'>*Risky in a public server</font>",
     CurrentValue = false,
     Flag         = "Run_DG",
     Callback     = function(v)
