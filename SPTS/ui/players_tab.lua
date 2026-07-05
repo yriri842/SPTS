@@ -82,7 +82,7 @@ Tabs.Players:CreateKeybind({
 -- deferred twice so every element (dropdown/button/toggle/keybind)
 -- has settled its AbsolutePosition/Size before the overlay measures it
 task.spawn(function()
-    task.wait(1)
+    task.wait(1.5)
     killSection:Lock("Kill Players — currently broken")
     killAuraSection:Lock("Kill Aura — currently broken")
     punchSection:Lock("Punch — currently broken")
