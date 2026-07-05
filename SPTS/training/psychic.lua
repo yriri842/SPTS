@@ -148,7 +148,7 @@ task.spawn(function()
                     end)
                 end
             else
-                if _G.ppUseFlyMode then
+                if _G.ppUseFlyMode or _G.isFlying() then
                     _G.stopFlyMode()
                     _G.ppUseFlyMode = false
                 end
