@@ -118,7 +118,7 @@ task.spawn(function()
         end
         if _G.Settings.PsychicPower then
             local chapter = _G.sathScanner.readMainQuestChapterFromUI()
-            local useFly  = Z.canFlyMeditateFarm(chapter, _G.RawStats)
+            local useFly  = Z.canFlyMeditateFarm(chapter, _G.RawStats, _G.sathScanner.hasFlyUnlocked())
             if not _G.ppTeleported then
                 local target = Z.smartTarget({ PsychicPower = true }, _G.RawStats, chapter)
                 if target then
