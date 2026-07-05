@@ -128,7 +128,7 @@ task.spawn(function()
                         _G.unequipAllTools()
                         root.CFrame = CFrame.new(target)
                         _G.ppTeleported = true
-                        task.wait(3)
+                        task.wait(3.5)
                     end
                 else
                     _G.ppTeleported = true
