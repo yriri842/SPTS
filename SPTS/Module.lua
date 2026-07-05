@@ -147,12 +147,10 @@ function M.canDeathGrind(bt)
 end
 
 function M.canFlyMeditateFarm(chapter, raw, flyUnlocked)
-    if not flyUnlocked then
-        if not chapter or chapter < M.PP_FLY_CHAPTER then return false end
-    end
+    if not flyUnlocked then return false end
     raw = raw or {}
-    if (raw.JF or 0) < M.PP_FLY_MIN_JF then return false end
-    if (raw.PP or 0) < M.PP_FLY_MIN_PP then return false end
+    -- if PP >= 1M we can reach a real temple zone, no need to fly
+    if (raw.PP or 0) >= 1e6 then return false end
     return true
 end
 
