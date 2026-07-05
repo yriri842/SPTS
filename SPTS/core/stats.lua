@@ -1,25 +1,31 @@
 local Z = _G.Z
 
+local cpd = nil
 local function findClientPlrData()
+    if cpd and cpd.FistStrength then return cpd end
+
     local okRenv, renv = pcall(function() return getrenv and getrenv() end)
     if okRenv and renv and renv._G and renv._G.ClientPlrData then
-        return renv._G.ClientPlrData
+        cpd = renv._G.ClientPlrData
+        return cpd
     end
     if _G.ClientPlrData and _G.ClientPlrData.FistStrength then
-        return _G.ClientPlrData
+        cpd = _G.ClientPlrData
+        return cpd
     end
     if getgc then
         for _, obj in pairs(getgc(false)) do
             if type(obj) == "table" and rawget(obj, "FistStrength")
                 and rawget(obj, "QuestData") and rawget(obj, "Inventory") then
-                return obj
+                cpd = obj
+                return cpd
             end
         end
     end
     return nil
 end
 
-local cpd = findClientPlrData()
+findClientPlrData()
 _G.UseRawStats = (cpd ~= nil)
 
 local function commas(n)
@@ -34,7 +40,6 @@ end
 local RANK_NAMES = { "F","E","D","C","B","A","S","SS","SSS","X","XX" }
 
 local RepFolder = game:GetService("ReplicatedStorage"):FindFirstChild("Rep_ChatNameColors")
-
 local function repColor(side, index)
     if not RepFolder then return Color3.fromRGB(250,250,250) end
     local folder = RepFolder:FindFirstChild(side)
@@ -65,20 +70,15 @@ local function repStatus(rep)
         {-30000,-20000,"Warmaster",19},{-50000,-30000,"Lord of Calamity",20},{-100000,-50000,"False God",21},
         {-math.huge,-100000,"Harbringer of Doom",22},
     }
-
     if rep == 0 then
         return "Innocent", Color3.fromRGB(250,250,250)
     elseif rep > 0 then
         for _, e in ipairs(HERO) do
-            if rep >= e[1] and rep < e[2] then
-                return e[3], repColor("Hero", e[4])
-            end
+            if rep >= e[1] and rep < e[2] then return e[3], repColor("Hero", e[4]) end
         end
     else
         for _, e in ipairs(VILLAIN) do
-            if rep > e[1] and rep <= e[2] then
-                return e[3], repColor("Villain", e[4])
-            end
+            if rep > e[1] and rep <= e[2] then return e[3], repColor("Villain", e[4]) end
         end
     end
     return "Innocent", Color3.fromRGB(250,250,250)
@@ -104,7 +104,7 @@ end
 
 task.spawn(function()
     while _G.SPTS_ALIVE ~= false do
-        cpd = findClientPlrData()
+        findClientPlrData()
         _G.UseRawStats = (cpd ~= nil)
 
         if cpd then
@@ -120,18 +120,13 @@ task.spawn(function()
             _G.RawStats.JF = jf; _G.Stats.JF = commas(jf)
             _G.RawStats.PP = pp; _G.Stats.PP = commas(pp)
 
-            -- Token
-            _G.Stats.Token = commas(cpd.Token or 0)
+            _G.Stats.Token     = commas(cpd.Token or 0)
+            _G.Stats.AliveTime = tostring(cpd.AliveTime or 0) -- minute
 
-            -- Alive Time
-            _G.Stats.AliveTime = tostring(cpd.AliveTime or 0)
-
-            -- Rank
             local rankIdx = cpd.Rank or 0
             _G.RawStats.RankIndex = rankIdx
             _G.Stats.Rank = RANK_NAMES[rankIdx] or "?"
 
-            -- Reputation status + color
             local name, col = repStatus(cpd.Reputation or 0)
             _G.Stats.RepName  = name
             _G.Stats.RepColor = col
@@ -139,10 +134,8 @@ task.spawn(function()
 
             task.wait(0.2)
         else
-            -- ── UI fallback ──
             local gui   = _G.LP:FindFirstChild("PlayerGui")
-            local frame = gui
-                and gui:FindFirstChild("ScreenGui")
+            local frame = gui and gui:FindFirstChild("ScreenGui")
                 and gui.ScreenGui:FindFirstChild("MenuFrame")
                 and gui.ScreenGui.MenuFrame:FindFirstChild("InfoFrame")
             if frame then
@@ -168,9 +161,8 @@ task.spawn(function()
             end
 
             _G.Stats.AliveTime = _G.Stats.AliveTime or "--"
-
-            _G.Stats.RepName  = _G.Stats.RepName  or "Innocent"
-            _G.Stats.RepColor = _G.Stats.RepColor or Color3.fromRGB(250,250,250)
+            _G.Stats.RepName   = _G.Stats.RepName  or "Innocent"
+            _G.Stats.RepColor  = _G.Stats.RepColor or Color3.fromRGB(250,250,250)
 
             task.wait(0.8)
         end
