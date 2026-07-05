@@ -1,20 +1,9 @@
--- Psychic Power training loop.
--- Fly detection: _G.Flying is set by the game's LocalScript (accessible).
--- CanFly global is also set by the game (true when in Freefall).
--- To enter fly: jump → wait for Freefall (CanFly=true) → jump again.
--- Once flying: equip Meditate for 10x PP gains.
--- When PP target reached: unequip Meditate → stop fly via jump.
-
 local Z              = _G.Z
 local LP             = _G.LP
 local UserInputService = _G.UserInputService
 
--- ── Fly state ─────────────────────────────────────────────────
-
 _G.isFlying = function()
-    -- _G.Flying is set by the game's own LocalScript, not ClientPlrData.
     if _G.Flying == true then return true end
-    -- Also check BodyVelocity/BodyGyro added to root during fly.
     local char = LP.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
     if root then
@@ -44,8 +33,6 @@ local function waitUntilMeditateGone(maxSec)
     end
 end
 
--- Stop fly: unequip Meditate first (required by game to allow fly cancel),
--- then jump to exit fly mode.
 _G.stopFlyMode = function()
     if not _G.isFlying() and not _G.hasMeditateEquipped() then return end
     unequipMeditateTool()
@@ -55,8 +42,6 @@ _G.stopFlyMode = function()
         task.wait(0.5)
     end
 end
-
--- ── Double jump to enter fly ──────────────────────────────────
 
 local function doJump()
     local vim = game:GetService("VirtualInputManager")
@@ -71,16 +56,34 @@ local function getHumAndRoot()
     return char:FindFirstChildOfClass("Humanoid"), char:FindFirstChild("HumanoidRootPart")
 end
 
+-- game sets _G.CanFly to true once we're in freefall.
+-- so instead of a blind wait we watch for it, then press again.
+-- this kills the double-jump / low-altitude weirdness.
+local function waitForFreefall(maxSec)
+    local hum = select(1, getHumAndRoot())
+    local t0 = tick()
+    while tick() - t0 < (maxSec or 1.2) do
+        if _G.CanFly == true then return true end
+        if hum and hum:GetState() == Enum.HumanoidStateType.Freefall then return true end
+        task.wait(0.03)
+    end
+    return _G.CanFly == true
+end
+
 local function tryEnterFlyMode()
     if _G.isFlying() then return true end
-
     local hum, root = getHumAndRoot()
     if not hum or not root or hum.Health <= 0 then return false end
 
-    -- Double jump: Space → 0.8s → Space
-    -- First press jumps, second press in freefall activates fly.
+    -- first jump gets us airborne
     doJump()
-    task.wait(0.8)
+    -- wait for actual freefall instead of a fixed 0.8s guess
+    if not waitForFreefall(1.2) then
+        -- didn't reach freefall (probably too low / on ground). bail, loop retries.
+        return false
+    end
+    task.wait(0.08)
+    -- second press in freefall = fly
     doJump()
 
     local t0 = tick()
@@ -88,11 +91,8 @@ local function tryEnterFlyMode()
         if _G.isFlying() then return true end
         task.wait(0.05)
     end
-
     return _G.isFlying()
 end
-
--- ── Meditate equip ────────────────────────────────────────────
 
 local function equipMeditateTool()
     if _G.sathAutofarmBlocked() then return end
@@ -104,10 +104,11 @@ local function equipMeditateTool()
     if tool then hum:EquipTool(tool) end
 end
 
--- ── Main PP loop ──────────────────────────────────────────────
+-- guard so we don't spam fly attempts every 0.4s while one is in flight
+local flyAttemptBusy = false
 
 task.spawn(function()
-    while true do
+    while _G.SPTS_ALIVE ~= false do
         if _G.sathAutofarmBlocked() then
             if not _G.Settings.PsychicPower then
                 _G.unequipAllTools()
@@ -115,12 +116,9 @@ task.spawn(function()
             task.wait(0.15)
             continue
         end
-
         if _G.Settings.PsychicPower then
             local chapter = _G.sathScanner.readMainQuestChapterFromUI()
             local useFly  = Z.canFlyMeditateFarm(chapter, _G.RawStats)
-
-            -- Teleport to the right PP zone once per activation.
             if not _G.ppTeleported then
                 local target = Z.smartTarget({ PsychicPower = true }, _G.RawStats, chapter)
                 if target then
@@ -135,18 +133,19 @@ task.spawn(function()
                     _G.ppTeleported = true
                 end
             end
-
             if useFly then
                 _G.ppUseFlyMode = true
                 if _G.isFlying() then
                     equipMeditateTool()
-                else
-                    if tryEnterFlyMode() then
-                        task.wait(0.2)
-                        equipMeditateTool()
-                    else
-                        task.wait(2)
-                    end
+                elseif not flyAttemptBusy then
+                    flyAttemptBusy = true
+                    task.spawn(function()
+                        if tryEnterFlyMode() then
+                            task.wait(0.2)
+                            equipMeditateTool()
+                        end
+                        flyAttemptBusy = false
+                    end)
                 end
             else
                 if _G.ppUseFlyMode then
@@ -155,7 +154,6 @@ task.spawn(function()
                 end
                 equipMeditateTool()
             end
-
         else
             if _G.ppTeleported or _G.ppUseFlyMode then
                 _G.unequipAllTools()
@@ -164,7 +162,6 @@ task.spawn(function()
             _G.ppTeleported = false
             _G.ppUseFlyMode = false
         end
-
         task.wait(0.4)
     end
 end)
