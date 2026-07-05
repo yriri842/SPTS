@@ -120,9 +120,19 @@ function M.getCrystalZonePos()
 end
 
 -- chapter: UI "X/13" (nil = unknown, treat as starter-safe)
-function M.fsTrainingMode(chapter)
+function M.fsTrainingMode(chapter, fs)
+    if chapter == 0 then
+        fs = fs or 0
+        if fs >= 1e9 then          -- has blue-star tier fist = definitely progressed far
+            return "zone"
+        elseif fs >= 1000 then     -- past quest-3 rock milestone
+            return "rock"
+        else
+            return "starter"       -- genuinely new, push up in place
+        end
+    end
     if not chapter or chapter < M.FS_CHAPTER_ROCK then
-        return "starter" -- Push Up, no TP
+        return "starter"
     end
     if chapter < M.FS_CHAPTER_CRYSTAL then
         return "rock"
@@ -162,7 +172,7 @@ function M.smartTarget(settings, raw, chapter)
 
     if settings.PsychicPower then return pick(M.PP, raw.PP) end
     if settings.FistStrength then
-        local mode = M.fsTrainingMode(chapter)
+        local mode = M.fsTrainingMode(chapter, raw.FS)
         if mode == "rock" then
             return M.getRockZonePos()
         end
@@ -180,7 +190,7 @@ end
 
 -- Teleport target for autofarm loops (nil = stay in place / use starter tool)
 function M.farmTarget(settings, raw, chapter)
-    if settings.FistStrength and M.fsTrainingMode(chapter) == "starter" then
+    if settings.FistStrength and M.fsTrainingMode(chapter, raw.FS) == "starter" then
         return nil
     end
     if settings.BodyToughness then
