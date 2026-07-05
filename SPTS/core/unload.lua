@@ -48,8 +48,15 @@ _G.SPTS_Unload = function()
 
     -- 5. destroy the UI. wrap hard because rayfield internals get grumpy
     pcall(function()
+        if _G.RayfieldWindow and _G.RayfieldWindow.Hide then
+            pcall(function() _G.RayfieldWindow.Hide() end)
+        end
+    end)
+    task.wait(0.3)
+    pcall(function()
         if _G.Rayfield and _G.Rayfield.Destroy then _G.Rayfield:Destroy() end
     end)
+    task.wait(0.2)
     pcall(function()
         local cg = game:GetService("CoreGui")
         for _, name in ipairs({ "LoaderUI", "Rayfield" }) do
