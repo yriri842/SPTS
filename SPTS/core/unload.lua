@@ -1,5 +1,3 @@
--- full teardown. flip the alive flag so every while loop exits,
--- kill conns, nuke UI, wipe the globals. basically make it disappear.
 _G.SPTS_ALIVE = _G.SPTS_ALIVE
 if _G.SPTS_ALIVE == nil then _G.SPTS_ALIVE = true end
 
@@ -7,10 +5,9 @@ _G.SPTS_Unload = function()
     if _G.SPTS_UNLOADING then return end
     _G.SPTS_UNLOADING = true
 
-    -- 1. stop every loop
+    -- 1. flip the flag first, this makes every loop exit on its next wait
     _G.SPTS_ALIVE = false
 
-    -- 2. turn all farming off so nothing fires one last time mid-teardown
     if _G.Settings then
         _G.Settings.FistStrength   = false
         _G.Settings.BodyToughness  = false
@@ -25,43 +22,33 @@ _G.SPTS_Unload = function()
         _G.Settings.ActiveWeight   = 0
     end
 
-    -- give the loops a tick to notice the flag and bail
-    task.wait(0.2)
+    -- 2. give loops enough time to actually notice and stop.
+    -- longest wait in the codebase is the weight loop at 3s, but the
+    -- ui loops are 1s. 1.2s is enough for the ones that touch the ui
+    task.wait(1.2)
 
-    -- 3. stop fly + drop any equipped tool
+    -- 3. clean gameplay side
     pcall(function() if _G.stopFlyMode then _G.stopFlyMode() end end)
     pcall(function() if _G.unequipAllTools then _G.unequipAllTools() end end)
+    pcall(function() if _G.espModule then _G.espModule.setPlayerEspEnabled(false) end end)
 
-    -- 4. kill ESP
-    pcall(function()
-        if _G.espModule then _G.espModule.setPlayerEspEnabled(false) end
-    end)
-
-    -- 5. disconnect body respawn conns
+    -- 4. disconnect stashed conns
     pcall(function()
         if _G.SPTS_bodyConns then
-            for _, c in ipairs(_G.SPTS_bodyConns) do
-                pcall(function() c:Disconnect() end)
-            end
+            for _, c in ipairs(_G.SPTS_bodyConns) do pcall(function() c:Disconnect() end) end
             _G.SPTS_bodyConns = {}
         end
     end)
-
-    -- 6. anything we stashed in the global conn bag
     pcall(function()
         if _G.SPTS_conns then
-            for _, c in ipairs(_G.SPTS_conns) do
-                pcall(function() c:Disconnect() end)
-            end
+            for _, c in ipairs(_G.SPTS_conns) do pcall(function() c:Disconnect() end) end
             _G.SPTS_conns = {}
         end
     end)
 
-    -- 7. destroy rayfield window + loader gui if still around
+    -- 5. destroy the UI. wrap hard because rayfield internals get grumpy
     pcall(function()
-        if _G.Rayfield and _G.Rayfield.Destroy then
-            _G.Rayfield:Destroy()
-        end
+        if _G.Rayfield and _G.Rayfield.Destroy then _G.Rayfield:Destroy() end
     end)
     pcall(function()
         local cg = game:GetService("CoreGui")
@@ -69,16 +56,14 @@ _G.SPTS_Unload = function()
             local g = cg:FindFirstChild(name)
             if g then g:Destroy() end
         end
-        -- rayfield sometimes parents under a random gui too, sweep just in case
         for _, g in ipairs(cg:GetChildren()) do
-            if g:IsA("ScreenGui") and g:FindFirstChild("Main") and g.Name == "Rayfield" then
-                g:Destroy()
-            end
+            if g:IsA("ScreenGui") and g.Name == "Rayfield" then g:Destroy() end
         end
     end)
 
-    -- 8. wipe our globals so a re-inject starts clean
-    task.defer(function()
+    -- 6. now that everything is stopped + UI gone, wipe globals.
+    -- big delay so any straggler loop already broke out before we nil stuff
+    task.delay(2, function()
         for _, k in ipairs({
             "Toggles","Tabs","RayfieldWindow","Rayfield","Loader","Z",
             "espModule","killModule","sathScanner","guiUtils","trainingTools",
