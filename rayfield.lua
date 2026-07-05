@@ -2528,164 +2528,160 @@ function RayfieldLibrary:CreateWindow(Settings)
 		        Section.Title.Text = NewSection
 		    end
 		
-		    -- ── Section locking ──────────────────────────────────────
-		    -- overlays every element from this section title down to the next
-		    -- section (or the end of the page) with a themed, shadowed lock cover
-		    -- that eats input so the toggles/buttons underneath can't be used.
-		    local lockOverlay = nil
-		    local lockConn    = nil
-		
-		    -- collect the sibling elements that belong to this section
-		    local function getSectionElements()
-		        local collected = {}
-		        local passedSelf = false
-		        for _, child in ipairs(TabPage:GetChildren()) do
-		            if child == Section then
-		                passedSelf = true
-		            elseif passedSelf then
-		                -- stop at the next section title (and its leading spacer)
-		                if child.Name == "SectionTitle" then
-		                    break
-		                end
-		                if child:IsA("GuiObject") and child.Name ~= "Placeholder" then
-		                    table.insert(collected, child)
-		                end
-		            end
-		        end
-		        return collected
-		    end
-		
-		    -- computes the overlay's Y range covering title + all section elements
-		    local function computeBounds()
-		        local topY = Section.AbsolutePosition.Y
-		        local bottomY = Section.AbsolutePosition.Y + Section.AbsoluteSize.Y
-		        for _, el in ipairs(getSectionElements()) do
-		            local ey = el.AbsolutePosition.Y + el.AbsoluteSize.Y
-		            if ey > bottomY then bottomY = ey end
-		            if el.AbsolutePosition.Y < topY then topY = el.AbsolutePosition.Y end
-		        end
-		        return topY, bottomY
-		    end
-		
-		    function SectionValue:Lock(reason)
-		        if lockOverlay then return end -- already locked
-		
-		        -- container that follows the tab page scroll
-		        lockOverlay = Instance.new("Frame")
-		        lockOverlay.Name = "SectionLock"
-		        lockOverlay.BackgroundColor3 = SelectedTheme.Background
-		        lockOverlay.BackgroundTransparency = 1
-		        lockOverlay.BorderSizePixel = 0
-		        lockOverlay.ZIndex = 50
-		        lockOverlay.Active = true            -- eats clicks
-		        lockOverlay.Selectable = false
-		        lockOverlay.Parent = TabPage.Parent  -- sit above the scrolling elements
-		
-		        local corner = Instance.new("UICorner")
-		        corner.CornerRadius = UDim.new(0, 6)
-		        corner.Parent = lockOverlay
-		
-		        local stroke = Instance.new("UIStroke")
-		        stroke.Color = SelectedTheme.ElementStroke
-		        stroke.Transparency = 1
-		        stroke.Thickness = 1
-		        stroke.Parent = lockOverlay
-		
-		        -- shadow, matches Rayfield element shadow styling
-		        local shadow = Instance.new("ImageLabel")
-		        shadow.Name = "Shadow"
-		        shadow.BackgroundTransparency = 1
-		        shadow.Image = customAssets[tostring(3602733521)] or "rbxassetid://3602733521"
-		        shadow.ImageColor3 = SelectedTheme.Shadow
-		        shadow.ImageTransparency = 1
-		        shadow.ScaleType = Enum.ScaleType.Slice
-		        shadow.SliceCenter = Rect.new(49, 49, 450, 450)
-		        shadow.Size = UDim2.new(1, 12, 1, 12)
-		        shadow.Position = UDim2.new(0.5, 0, 0.5, 0)
-		        shadow.AnchorPoint = Vector2.new(0.5, 0.5)
-		        shadow.ZIndex = 49
-		        shadow.Parent = lockOverlay
-		
-		        -- lock icon
-		        local icon = Instance.new("ImageLabel")
-		        icon.Name = "LockIcon"
-		        icon.BackgroundTransparency = 1
-		        icon.Size = UDim2.new(0, 22, 0, 22)
-		        icon.AnchorPoint = Vector2.new(0.5, 0.5)
-		        icon.Position = UDim2.new(0.5, -70, 0.5, 0)
-		        icon.ImageColor3 = SelectedTheme.TextColor
-		        icon.ImageTransparency = 1
-		        icon.ZIndex = 51
-		        do
-		            local img, rectOffset, rectSize = resolveIcon("lock")
-		            icon.Image = img
-		            if rectOffset then icon.ImageRectOffset = rectOffset end
-		            if rectSize then icon.ImageRectSize = rectSize end
-		        end
-		        icon.Parent = lockOverlay
-		
-		        -- reason / label text
-		        local label = Instance.new("TextLabel")
-		        label.Name = "LockLabel"
-		        label.BackgroundTransparency = 1
-		        label.Size = UDim2.new(1, -80, 1, 0)
-		        label.Position = UDim2.new(0.5, 20, 0.5, 0)
-		        label.AnchorPoint = Vector2.new(0.5, 0.5)
-		        label.Font = Enum.Font.GothamMedium
-		        label.Text = reason or "Locked"
-		        label.TextColor3 = SelectedTheme.TextColor
-		        label.TextTransparency = 1
-		        label.TextSize = 14
-		        label.TextXAlignment = Enum.TextXAlignment.Center
-		        label.ZIndex = 51
-		        label.Parent = lockOverlay
-		
-		        -- keep the overlay aligned to the section as the page scrolls/resizes
-		        local function reposition()
-		            if not lockOverlay or not lockOverlay.Parent then return end
-		            local topY, bottomY = computeBounds()
-		            local parentPos = TabPage.Parent.AbsolutePosition
-		            local parentSize = TabPage.AbsoluteSize
-		            lockOverlay.Position = UDim2.new(0, Section.AbsolutePosition.X - parentPos.X, 0, topY - parentPos.Y)
-		            lockOverlay.Size = UDim2.new(0, Section.AbsoluteSize.X, 0, (bottomY - topY))
-		        end
-		
-		        reposition()
-		        lockConn = RunService.RenderStepped:Connect(reposition)
-		
-		        -- fade the cover in
-		        TweenService:Create(lockOverlay, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.15}):Play()
-		        TweenService:Create(stroke, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {Transparency = 0}):Play()
-		        TweenService:Create(shadow, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {ImageTransparency = 0.6}):Play()
-		        TweenService:Create(icon, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {ImageTransparency = 0}):Play()
-		        TweenService:Create(label, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {TextTransparency = 0}):Play()
-		
-		        lockOverlay:SetAttribute("shadowRef", true)
-		    end
-		
-		    function SectionValue:Unlock()
-		        if not lockOverlay then return end
-		        if lockConn then lockConn:Disconnect() lockConn = nil end
-		        local overlay = lockOverlay
-		        lockOverlay = nil
-		        for _, obj in ipairs(overlay:GetChildren()) do
-		            if obj:IsA("ImageLabel") then
-		                TweenService:Create(obj, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {ImageTransparency = 1}):Play()
-		            elseif obj:IsA("TextLabel") then
-		                TweenService:Create(obj, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {TextTransparency = 1}):Play()
-		            elseif obj:IsA("UIStroke") then
-		                TweenService:Create(obj, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
-		            end
-		        end
-		        TweenService:Create(overlay, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {BackgroundTransparency = 1}):Play()
-		        task.delay(0.35, function()
-		            if overlay and overlay.Parent then overlay:Destroy() end
-		        end)
-		    end
-		
-		    function SectionValue:IsLocked()
-		        return lockOverlay ~= nil
-		    end
+    -- ── Section locking ──────────────────────────────────────
+    local lockOverlay = nil
+    local lockConn    = nil
+
+    local function getSectionElements()
+        local collected = {}
+        local passedSelf = false
+        for _, child in ipairs(TabPage:GetChildren()) do
+            if child == Section then
+                passedSelf = true
+            elseif passedSelf then
+                if child.Name == "SectionTitle" then
+                    break
+                end
+                if child:IsA("GuiObject") and child.Name ~= "Placeholder" then
+                    table.insert(collected, child)
+                end
+            end
+        end
+        return collected
+    end
+
+    function SectionValue:Lock(reason)
+        if lockOverlay then return end
+
+        -- overlay lives INSIDE the scrolling page so it scrolls with the
+        -- elements. we size/position it in offset relative to TabPage.
+        lockOverlay = Instance.new("Frame")
+        lockOverlay.Name = "SectionLock"
+        lockOverlay.BackgroundColor3 = SelectedTheme.Background
+        lockOverlay.BackgroundTransparency = 1
+        lockOverlay.BorderSizePixel = 0
+        lockOverlay.ZIndex = 500
+        lockOverlay.Active = true
+        lockOverlay.Selectable = false
+        lockOverlay.Parent = TabPage
+
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(0, 6)
+        corner.Parent = lockOverlay
+
+        local stroke = Instance.new("UIStroke")
+        stroke.Color = SelectedTheme.ElementStroke
+        stroke.Transparency = 1
+        stroke.Thickness = 1
+        stroke.Parent = lockOverlay
+
+        local shadow = Instance.new("ImageLabel")
+        shadow.Name = "Shadow"
+        shadow.BackgroundTransparency = 1
+        shadow.Image = customAssets[tostring(3602733521)] or "rbxassetid://3602733521"
+        shadow.ImageColor3 = SelectedTheme.Shadow
+        shadow.ImageTransparency = 1
+        shadow.ScaleType = Enum.ScaleType.Slice
+        shadow.SliceCenter = Rect.new(49, 49, 450, 450)
+        shadow.Size = UDim2.new(1, 20, 1, 20)
+        shadow.Position = UDim2.new(0.5, 0, 0.5, 0)
+        shadow.AnchorPoint = Vector2.new(0.5, 0.5)
+        shadow.ZIndex = 499
+        shadow.Parent = lockOverlay
+
+        local icon = Instance.new("ImageLabel")
+        icon.Name = "LockIcon"
+        icon.BackgroundTransparency = 1
+        icon.Size = UDim2.new(0, 20, 0, 20)
+        icon.AnchorPoint = Vector2.new(0.5, 0.5)
+        icon.Position = UDim2.new(0.5, -75, 0.5, 0)
+        icon.ImageColor3 = SelectedTheme.TextColor
+        icon.ImageTransparency = 1
+        icon.ZIndex = 501
+        do
+            local img, rectOffset, rectSize = resolveIcon("lock")
+            icon.Image = img
+            if rectOffset then icon.ImageRectOffset = rectOffset end
+            if rectSize then icon.ImageRectSize = rectSize end
+        end
+        icon.Parent = lockOverlay
+
+        local label = Instance.new("TextLabel")
+        label.Name = "LockLabel"
+        label.BackgroundTransparency = 1
+        label.Size = UDim2.new(1, -60, 1, 0)
+        label.Position = UDim2.new(0.5, 15, 0.5, 0)
+        label.AnchorPoint = Vector2.new(0.5, 0.5)
+        label.Font = Enum.Font.GothamMedium
+        label.Text = reason or "Locked"
+        label.TextColor3 = SelectedTheme.TextColor
+        label.TextTransparency = 1
+        label.TextSize = 14
+        label.TextXAlignment = Enum.TextXAlignment.Center
+        label.ZIndex = 501
+        label.Parent = lockOverlay
+
+        -- position/size the overlay to cover the section title + its elements,
+        -- all in TabPage-local offset coordinates so it rides the scroll
+        local function reposition()
+            if not lockOverlay or not lockOverlay.Parent then return end
+
+            local topOff    = Section.Position.Y.Offset
+            local bottomOff = Section.Position.Y.Offset + Section.AbsoluteSize.Y
+
+            -- use canvas-relative positions: each element's offset from TabPage top
+            local baseY = Section.AbsolutePosition.Y
+            local minY  = 0
+            local maxY  = Section.AbsoluteSize.Y
+
+            for _, el in ipairs(getSectionElements()) do
+                local relTop = el.AbsolutePosition.Y - baseY
+                local relBot = relTop + el.AbsoluteSize.Y
+                if relBot > maxY then maxY = relBot end
+                if relTop < minY then minY = relTop end
+            end
+
+            -- Section.AbsolutePosition relative to TabPage's canvas
+            local canvasY = Section.AbsolutePosition.Y - TabPage.AbsolutePosition.Y + TabPage.CanvasPosition.Y
+            local canvasX = Section.AbsolutePosition.X - TabPage.AbsolutePosition.X
+
+            lockOverlay.Position = UDim2.new(0, canvasX, 0, canvasY + minY)
+            lockOverlay.Size     = UDim2.new(0, Section.AbsoluteSize.X, 0, maxY - minY)
+        end
+
+        reposition()
+        lockConn = RunService.RenderStepped:Connect(reposition)
+
+        TweenService:Create(lockOverlay, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.1}):Play()
+        TweenService:Create(stroke, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {Transparency = 0}):Play()
+        TweenService:Create(shadow, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {ImageTransparency = 0.5}):Play()
+        TweenService:Create(icon, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {ImageTransparency = 0}):Play()
+        TweenService:Create(label, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {TextTransparency = 0}):Play()
+    end
+
+    function SectionValue:Unlock()
+        if not lockOverlay then return end
+        if lockConn then lockConn:Disconnect() lockConn = nil end
+        local overlay = lockOverlay
+        lockOverlay = nil
+        for _, obj in ipairs(overlay:GetChildren()) do
+            if obj:IsA("ImageLabel") then
+                TweenService:Create(obj, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {ImageTransparency = 1}):Play()
+            elseif obj:IsA("TextLabel") then
+                TweenService:Create(obj, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {TextTransparency = 1}):Play()
+            elseif obj:IsA("UIStroke") then
+                TweenService:Create(obj, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
+            end
+        end
+        TweenService:Create(overlay, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {BackgroundTransparency = 1}):Play()
+        task.delay(0.35, function()
+            if overlay and overlay.Parent then overlay:Destroy() end
+        end)
+    end
+
+    function SectionValue:IsLocked()
+        return lockOverlay ~= nil
+    end
 		
 		    SDone = true
 		    return SectionValue
