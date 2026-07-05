@@ -2528,191 +2528,228 @@ function RayfieldLibrary:CreateWindow(Settings)
 		        Section.Title.Text = NewSection
 		    end
 		
-    -- ── Section locking ──────────────────────────────────────
-    local lockOverlay = nil
-    local lockConn    = nil
-
-    local function getSectionElements()
-        local collected = {}
-        local passedSelf = false
-        for _, child in ipairs(TabPage:GetChildren()) do
-            if child == Section then
-                passedSelf = true
-            elseif passedSelf then
-                if child.Name == "SectionTitle" then break end
-                if child:IsA("GuiObject") and child.Name ~= "Placeholder" then
-                    table.insert(collected, child)
-                end
-            end
-        end
-        return collected
-    end
-
-    function SectionValue:Lock(reason)
-        if lockOverlay then return end
-
-        lockOverlay = Instance.new("Frame")
-        lockOverlay.Name = "SectionLock"
-        lockOverlay.BackgroundColor3 = SelectedTheme.Background
-        lockOverlay.BackgroundTransparency = 1
-        lockOverlay.BorderSizePixel = 0
-        lockOverlay.ZIndex = 500
-        lockOverlay.Active = true
-        lockOverlay.Selectable = false
-        lockOverlay.ClipsDescendants = true
-        lockOverlay.Parent = Rayfield
-
-        local corner = Instance.new("UICorner")
-        corner.CornerRadius = UDim.new(0, 6)
-        corner.Parent = lockOverlay
-
-        local stroke = Instance.new("UIStroke")
-        stroke.Color = SelectedTheme.ElementStroke
-        stroke.Transparency = 1
-        stroke.Thickness = 1
-        stroke.Parent = lockOverlay
-
-        -- content holder kept centred against the FULL span while clipped
-        local content = Instance.new("Frame")
-        content.Name = "Content"
-        content.BackgroundTransparency = 1
-        content.BorderSizePixel = 0
-        content.Size = UDim2.new(1, 0, 1, 0)
-        content.ZIndex = 501
-        content.Parent = lockOverlay
-
-        -- icon + label in a horizontal auto-sized row, centred
-        local row = Instance.new("Frame")
-        row.Name = "Row"
-        row.BackgroundTransparency = 1
-        row.AnchorPoint = Vector2.new(0.5, 0.5)
-        row.Position = UDim2.new(0.5, 0, 0.5, 0)
-        row.Size = UDim2.new(0, 0, 0, 20)
-        row.AutomaticSize = Enum.AutomaticSize.X
-        row.ZIndex = 502
-        row.Parent = content
-
-        local rowList = Instance.new("UIListLayout")
-        rowList.FillDirection = Enum.FillDirection.Horizontal
-        rowList.VerticalAlignment = Enum.VerticalAlignment.Center
-        rowList.HorizontalAlignment = Enum.HorizontalAlignment.Center
-        rowList.Padding = UDim.new(0, 6)
-        rowList.SortOrder = Enum.SortOrder.LayoutOrder
-        rowList.Parent = row
-
-        local icon = Instance.new("ImageLabel")
-        icon.Name = "LockIcon"
-        icon.LayoutOrder = 1
-        icon.BackgroundTransparency = 1
-        icon.Size = UDim2.new(0, 18, 0, 18)
-        icon.ImageColor3 = SelectedTheme.TextColor
-        icon.ImageTransparency = 1
-        icon.ZIndex = 503
-        do
-            local img, rectOffset, rectSize = resolveIcon("lock")
-            icon.Image = img
-            if rectOffset then icon.ImageRectOffset = rectOffset end
-            if rectSize then icon.ImageRectSize = rectSize end
-        end
-        icon.Parent = row
-
-        local label = Instance.new("TextLabel")
-        label.Name = "LockLabel"
-        label.LayoutOrder = 2
-        label.BackgroundTransparency = 1
-        label.AutomaticSize = Enum.AutomaticSize.X
-        label.Size = UDim2.new(0, 0, 0, 20)
-        label.Font = Enum.Font.GothamMedium
-        label.Text = reason or "Locked"
-        label.TextColor3 = SelectedTheme.TextColor
-        label.TextTransparency = 1
-        label.TextSize = 14
-        label.TextXAlignment = Enum.TextXAlignment.Left
-        label.ZIndex = 503
-        label.Parent = row
-
-            local function reposition()
-            if not lockOverlay or not lockOverlay.Parent then return end
-
-            local isActivePage = (Elements.UIPageLayout.CurrentPage == TabPage)
-            if not isActivePage or not Rayfield.Enabled or Hidden or Minimised then
-                lockOverlay.Visible = false
-                return
-            end
-
-            -- settled diff is ~12px on this UI; slide animations push it far
-            -- higher, so a threshold above the resting value hides transitions
-            local settled = math.abs(TabPage.AbsolutePosition.X - Elements.AbsolutePosition.X) <= 20
-            if not settled then
-                lockOverlay.Visible = false
-                return
-            end
-
-            local baseY  = Section.AbsolutePosition.Y
-            local minRel = 0
-            local maxRel = Section.AbsoluteSize.Y
-            for _, el in ipairs(getSectionElements()) do
-                local relTop = el.AbsolutePosition.Y - baseY
-                local relBot = relTop + el.AbsoluteSize.Y
-                if relBot > maxRel then maxRel = relBot end
-                if relTop < minRel then minRel = relTop end
-            end
-
-            local rayPos     = Rayfield.AbsolutePosition
-            local wantTop    = baseY + minRel
-            local wantBottom = baseY + maxRel
-            local fullHeight = wantBottom - wantTop
-
-            local pageTop    = TabPage.AbsolutePosition.Y
-            local pageBottom = pageTop + TabPage.AbsoluteSize.Y
-
-            local visTop    = math.max(wantTop, pageTop)
-            local visBottom = math.min(wantBottom, pageBottom)
-            local visHeight = math.max(visBottom - visTop, 0)
-
-            local x = Section.AbsolutePosition.X - rayPos.X
-            local y = visTop - rayPos.Y
-
-            lockOverlay.Position = UDim2.new(0, x, 0, y)
-            lockOverlay.Size     = UDim2.new(0, Section.AbsoluteSize.X, 0, visHeight)
-            lockOverlay.Visible  = visHeight > 2
-
-            content.Position = UDim2.new(0, 0, 0, (wantTop - visTop))
-            content.Size     = UDim2.new(1, 0, 0, fullHeight)
-        end
-
-        reposition()
-        lockConn = RunService.RenderStepped:Connect(reposition)
-
-        TweenService:Create(lockOverlay, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.35}):Play()
-        TweenService:Create(stroke, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {Transparency = 0.4}):Play()
-        TweenService:Create(icon, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {ImageTransparency = 0}):Play()
-        TweenService:Create(label, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {TextTransparency = 0}):Play()
-    end
-
-    function SectionValue:Unlock()
-        if not lockOverlay then return end
-        if lockConn then lockConn:Disconnect() lockConn = nil end
-        local overlay = lockOverlay
-        lockOverlay = nil
-        for _, obj in ipairs(overlay:GetDescendants()) do
-            if obj:IsA("ImageLabel") then
-                TweenService:Create(obj, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {ImageTransparency = 1}):Play()
-            elseif obj:IsA("TextLabel") then
-                TweenService:Create(obj, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {TextTransparency = 1}):Play()
-            elseif obj:IsA("UIStroke") then
-                TweenService:Create(obj, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
-            end
-        end
-        TweenService:Create(overlay, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {BackgroundTransparency = 1}):Play()
-        task.delay(0.35, function()
-            if overlay and overlay.Parent then overlay:Destroy() end
-        end)
-    end
-
-    function SectionValue:IsLocked()
-        return lockOverlay ~= nil
-    end
+		    -- ── Section locking ──────────────────────────────────────
+		    local lockOverlay    = nil
+		    local lockConn       = nil
+		    local lockedInteracts = nil  -- restore table for hard-disabled inputs
+		
+		    -- collect the elements belonging to this section (title + everything
+		    -- down to the next SectionTitle)
+		    local function getSectionElements()
+		        local collected = {}
+		        local passedSelf = false
+		        for _, child in ipairs(TabPage:GetChildren()) do
+		            if child == Section then
+		                passedSelf = true
+		            elseif passedSelf then
+		                if child.Name == "SectionTitle" then break end
+		                if child:IsA("GuiObject") and child.Name ~= "Placeholder" then
+		                    table.insert(collected, child)
+		                end
+		            end
+		        end
+		        return collected
+		    end
+		
+		    function SectionValue:Lock(reason)
+		        if lockOverlay then return end
+		
+		        -- HARD LOCK: kill interaction immediately so nothing can be toggled
+		        -- even before the visual cover renders
+		        lockedInteracts = {}
+		        for _, el in ipairs(getSectionElements()) do
+		            for _, desc in ipairs(el:GetDescendants()) do
+		                if desc:IsA("TextButton") or desc:IsA("ImageButton") then
+		                    lockedInteracts[desc] = { active = desc.Active, autoColor = desc.AutoButtonColor }
+		                    desc.Active = false
+		                    desc.AutoButtonColor = false
+		                elseif desc:IsA("TextBox") then
+		                    lockedInteracts[desc] = { editable = desc.TextEditable }
+		                    desc.TextEditable = false
+		                end
+		            end
+		        end
+		
+		        -- visual cover, sits in the ScreenGui above the scrolling elements
+		        lockOverlay = Instance.new("Frame")
+		        lockOverlay.Name = "SectionLock"
+		        lockOverlay.BackgroundColor3 = SelectedTheme.Background
+		        lockOverlay.BackgroundTransparency = 1
+		        lockOverlay.BorderSizePixel = 0
+		        lockOverlay.ZIndex = 500
+		        lockOverlay.Active = true
+		        lockOverlay.Selectable = false
+		        lockOverlay.ClipsDescendants = true
+		        lockOverlay.Parent = Rayfield
+		
+		        local corner = Instance.new("UICorner")
+		        corner.CornerRadius = UDim.new(0, 6)
+		        corner.Parent = lockOverlay
+		
+		        local stroke = Instance.new("UIStroke")
+		        stroke.Color = SelectedTheme.ElementStroke
+		        stroke.Transparency = 1
+		        stroke.Thickness = 1
+		        stroke.Parent = lockOverlay
+		
+		        -- content holder kept aligned to the FULL span while the outer
+		        -- frame is clipped against the visible scroll window
+		        local content = Instance.new("Frame")
+		        content.Name = "Content"
+		        content.BackgroundTransparency = 1
+		        content.BorderSizePixel = 0
+		        content.Size = UDim2.new(1, 0, 1, 0)
+		        content.ZIndex = 501
+		        content.Parent = lockOverlay
+		
+		        -- icon + label in a centred horizontal row (icon on the left)
+		        local row = Instance.new("Frame")
+		        row.Name = "Row"
+		        row.BackgroundTransparency = 1
+		        row.AnchorPoint = Vector2.new(0.5, 0.5)
+		        row.Position = UDim2.new(0.5, 0, 0.5, 0)
+		        row.Size = UDim2.new(0, 0, 0, 20)
+		        row.AutomaticSize = Enum.AutomaticSize.X
+		        row.ZIndex = 502
+		        row.Parent = content
+		
+		        local rowList = Instance.new("UIListLayout")
+		        rowList.FillDirection = Enum.FillDirection.Horizontal
+		        rowList.VerticalAlignment = Enum.VerticalAlignment.Center
+		        rowList.HorizontalAlignment = Enum.HorizontalAlignment.Center
+		        rowList.Padding = UDim.new(0, 6)
+		        rowList.SortOrder = Enum.SortOrder.LayoutOrder
+		        rowList.Parent = row
+		
+		        local icon = Instance.new("ImageLabel")
+		        icon.Name = "LockIcon"
+		        icon.LayoutOrder = 1
+		        icon.BackgroundTransparency = 1
+		        icon.Size = UDim2.new(0, 18, 0, 18)
+		        icon.ImageColor3 = SelectedTheme.TextColor
+		        icon.ImageTransparency = 1
+		        icon.ZIndex = 503
+		        do
+		            local img, rectOffset, rectSize = resolveIcon("lock")
+		            icon.Image = img
+		            if rectOffset then icon.ImageRectOffset = rectOffset end
+		            if rectSize then icon.ImageRectSize = rectSize end
+		        end
+		        icon.Parent = row
+		
+		        local label = Instance.new("TextLabel")
+		        label.Name = "LockLabel"
+		        label.LayoutOrder = 2
+		        label.BackgroundTransparency = 1
+		        label.AutomaticSize = Enum.AutomaticSize.X
+		        label.Size = UDim2.new(0, 0, 0, 20)
+		        label.Font = Enum.Font.GothamMedium
+		        label.Text = reason or "Locked"
+		        label.TextColor3 = SelectedTheme.TextColor
+		        label.TextTransparency = 1
+		        label.TextSize = 14
+		        label.TextXAlignment = Enum.TextXAlignment.Left
+		        label.ZIndex = 503
+		        label.Parent = row
+		
+		        local function reposition()
+		            if not lockOverlay or not lockOverlay.Parent then return end
+		
+		            local isActivePage = (Elements.UIPageLayout.CurrentPage == TabPage)
+		            if not isActivePage or not Rayfield.Enabled or Hidden or Minimised then
+		                lockOverlay.Visible = false
+		                return
+		            end
+		
+		            -- the resting horizontal offset between TabPage and Elements is
+		            -- ~12px on this UI; during slide animations it balloons, so a
+		            -- threshold above the resting value hides mid-transition frames
+		            local settled = math.abs(TabPage.AbsolutePosition.X - Elements.AbsolutePosition.X) <= 20
+		            if not settled then
+		                lockOverlay.Visible = false
+		                return
+		            end
+		
+		            local baseY  = Section.AbsolutePosition.Y
+		            local minRel = 0
+		            local maxRel = Section.AbsoluteSize.Y
+		            for _, el in ipairs(getSectionElements()) do
+		                local relTop = el.AbsolutePosition.Y - baseY
+		                local relBot = relTop + el.AbsoluteSize.Y
+		                if relBot > maxRel then maxRel = relBot end
+		                if relTop < minRel then minRel = relTop end
+		            end
+		
+		            local rayPos     = Rayfield.AbsolutePosition
+		            local wantTop    = baseY + minRel
+		            local wantBottom = baseY + maxRel
+		            local fullHeight = wantBottom - wantTop
+		
+		            local pageTop    = TabPage.AbsolutePosition.Y
+		            local pageBottom = pageTop + TabPage.AbsoluteSize.Y
+		
+		            local visTop    = math.max(wantTop, pageTop)
+		            local visBottom = math.min(wantBottom, pageBottom)
+		            local visHeight = math.max(visBottom - visTop, 0)
+		
+		            local x = Section.AbsolutePosition.X - rayPos.X
+		            local y = visTop - rayPos.Y
+		
+		            lockOverlay.Position = UDim2.new(0, x, 0, y)
+		            lockOverlay.Size     = UDim2.new(0, Section.AbsoluteSize.X, 0, visHeight)
+		            lockOverlay.Visible  = visHeight > 2
+		
+		            content.Position = UDim2.new(0, 0, 0, (wantTop - visTop))
+		            content.Size     = UDim2.new(1, 0, 0, fullHeight)
+		        end
+		
+		        reposition()
+		        lockConn = RunService.RenderStepped:Connect(reposition)
+		
+		        TweenService:Create(lockOverlay, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.35}):Play()
+		        TweenService:Create(stroke, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {Transparency = 0.4}):Play()
+		        TweenService:Create(icon, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {ImageTransparency = 0}):Play()
+		        TweenService:Create(label, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {TextTransparency = 0}):Play()
+		    end
+		
+		    function SectionValue:Unlock()
+		        -- restore interaction first (works even if the overlay never rendered)
+		        if lockedInteracts then
+		            for obj, saved in pairs(lockedInteracts) do
+		                if obj and obj.Parent then
+		                    if saved.active ~= nil then
+		                        obj.Active = saved.active
+		                        obj.AutoButtonColor = saved.autoColor
+		                    elseif saved.editable ~= nil then
+		                        obj.TextEditable = saved.editable
+		                    end
+		                end
+		            end
+		            lockedInteracts = nil
+		        end
+		
+		        if not lockOverlay then return end
+		        if lockConn then lockConn:Disconnect() lockConn = nil end
+		        local overlay = lockOverlay
+		        lockOverlay = nil
+		        for _, obj in ipairs(overlay:GetDescendants()) do
+		            if obj:IsA("ImageLabel") then
+		                TweenService:Create(obj, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {ImageTransparency = 1}):Play()
+		            elseif obj:IsA("TextLabel") then
+		                TweenService:Create(obj, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {TextTransparency = 1}):Play()
+		            elseif obj:IsA("UIStroke") then
+		                TweenService:Create(obj, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
+		            end
+		        end
+		        TweenService:Create(overlay, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {BackgroundTransparency = 1}):Play()
+		        task.delay(0.35, function()
+		            if overlay and overlay.Parent then overlay:Destroy() end
+		        end)
+		    end
+		
+		    function SectionValue:IsLocked()
+		        return lockOverlay ~= nil
+		    end
 		
 		    SDone = true
 		    return SectionValue
