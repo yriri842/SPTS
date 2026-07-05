@@ -2619,10 +2619,7 @@ function RayfieldLibrary:CreateWindow(Settings)
             if not lockOverlay or not lockOverlay.Parent then return end
             -- only show when THIS tab page is the active one AND the menu is open
             local isActivePage = (Elements.UIPageLayout.CurrentPage == TabPage)
-            -- treat a mid-slide (drifted) page as inactive so the cover never
-            -- trails outside the UI during tab transitions
-            local pageDrifted = math.abs(TabPage.AbsolutePosition.X - Elements.AbsolutePosition.X) > 3
-            if not isActivePage or pageDrifted or not Rayfield.Enabled or Hidden or Minimised then
+            if not isActivePage or not Rayfield.Enabled or Hidden or Minimised then
                 lockOverlay.Visible = false
                 return
             end
@@ -2648,10 +2645,10 @@ function RayfieldLibrary:CreateWindow(Settings)
             local visTop    = math.max(wantTop, pageTop)
             local visBottom = math.min(wantBottom, pageBottom)
             local visHeight = math.max(visBottom - visTop, 0)
-            -- require the section to sit within the horizontal page bounds
-            local sectionLeft  = Section.AbsolutePosition.X
-            local sectionRight = sectionLeft + Section.AbsoluteSize.X
-            local insideX = sectionLeft >= pageLeft - 2 and sectionRight <= pageRight + 2
+            -- hide if the section slid horizontally out of the visible page
+            -- (tab transition). tolerance kept loose so the active page shows.
+            local sectionCentreX = Section.AbsolutePosition.X + Section.AbsoluteSize.X / 2
+            local insideX = sectionCentreX >= pageLeft - 20 and sectionCentreX <= pageRight + 20
             local x = Section.AbsolutePosition.X - rayPos.X
             local y = visTop - rayPos.Y
             lockOverlay.Position = UDim2.new(0, x, 0, y)
