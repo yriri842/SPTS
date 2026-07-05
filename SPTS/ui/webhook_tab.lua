@@ -97,27 +97,31 @@ end)
 Tabs.Webhook:CreateSection("Configuration")
 
 Tabs.Webhook:CreateInput({
-    Name        = "Webhook URL",
-    PlaceholderText = "https://discord.com/api/webhooks/...",
+    Name                     = "Webhook URL",
+    CurrentValue             = "",
+    PlaceholderText          = "https://discord.com/api/webhooks/...",
     RemoveTextAfterFocusLost = false,
-    Callback    = function(val)
+    Flag                     = "WebhookURL",
+    Callback = function(val)
         _G.SPTS_WebhookURL = val
     end,
 })
 
 Tabs.Webhook:CreateToggle({
-    Name    = "Enable Auto-Send",
-    Default = false,
+    Name         = "Enable Auto-Send",
+    CurrentValue = false,
+    Flag         = "WebhookEnabled",
     Callback = function(val)
         _G.SPTS_WebhookEnabled = val
     end,
 })
 
 Tabs.Webhook:CreateSlider({
-    Name    = "Send Interval (minutes)",
-    Range   = { 1, 120 },
-    Increment = 1,
-    Default = 5,
+    Name         = "Send Interval (minutes)",
+    Range        = { 1, 120 },
+    Increment    = 1,
+    CurrentValue = 5,
+    Flag         = "WebhookInterval",
     Callback = function(val)
         _G.SPTS_WebhookInterval = val
     end,
