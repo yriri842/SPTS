@@ -294,6 +294,9 @@ end
 
 -- Builds the one-line status string shown in the Sath Quest dashboard label.
 local function buildSathInfoText()
+    if scanner().hasFinishedAllQuests and scanner().hasFinishedAllQuests() then
+        return "All quests complete (13/13)"
+    end
     if scanner().needsQuestPickupFromSath() then
         return "Quest 0/13 — 0/0 ready | Go to Sath"
     end
