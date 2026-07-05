@@ -129,7 +129,7 @@ task.spawn(function()
                         root.CFrame = CFrame.new(target)
                         _G.ppTeleported = true
                         local waited = 0
-                        while waited < 3.7 do
+                        while waited < 4 do
                             if not _G.Settings.PsychicPower then
                                 _G.unequipAllTools()
                                 _G.ppTeleported = false
