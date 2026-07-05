@@ -1,7 +1,7 @@
 task.spawn(function()
     local questConfig = {
         DLQ = { "FS", "BT", "PP", "MS", "JF" },
-        WLQ = { "FS", "BT", "PP" },
+        WLQ = { "FS1", "FS2", "FS3", "FS4", "BT1", "BT2", "BT3", "BT4", "PP1", "PP2", "PP3" ,"PP4" },
     }
     while _G.SPTS_ALIVE ~= false do
         if _G.Settings.AutoQuest then
