@@ -20,10 +20,8 @@ local function hasFinishedAllQuests()
     local skillFrame = menu and menu:FindFirstChild("SkillFrame")
     if not skillFrame then return false end
     local txt12 = skillFrame:FindFirstChild("SkillTxt12")
-    local box = txt12 and txt12:FindFirstChild("Skill_12_TxtBox")
-    local nameVal = box and box:FindFirstChild("SkillName")
-    if nameVal and nameVal:IsA("StringValue") then
-        return nameVal.Value == "KillingIntentAura"
+    if txt12 and txt12:IsA("TextLabel") then
+        return txt12.Text ~= "?????"
     end
     return false
 end
